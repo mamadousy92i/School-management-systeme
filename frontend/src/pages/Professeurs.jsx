@@ -21,6 +21,8 @@ export default function Professeurs() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingProf, setEditingProf] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -137,6 +139,17 @@ export default function Professeurs() {
     (prof.specialite && prof.specialite.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  // Pagination
+  const totalPages = Math.ceil(filteredProfesseurs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProfesseurs = filteredProfesseurs.slice(startIndex, endIndex);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -157,6 +170,49 @@ export default function Professeurs() {
               <Plus className="w-5 h-5" />
               Nouvel enseignant
             </button>
+          </div>
+        </div>
+
+        {/* Statistiques */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <User className="w-6 h-6 text-gray-700" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Total Enseignants</p>
+                <p className="text-2xl font-bold text-gray-900">{professeurs.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <BookOpen className="w-6 h-6 text-gray-700" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Spécialités</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {new Set(professeurs.filter(p => p.specialite).map(p => p.specialite)).size}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <Award className="w-6 h-6 text-gray-700" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Actifs</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {professeurs.filter(p => p.user.is_active).length}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -210,7 +266,7 @@ export default function Professeurs() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredProfesseurs.map((prof) => (
+                  {currentProfesseurs.map((prof) => (
                     <tr key={prof.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -265,49 +321,46 @@ export default function Professeurs() {
               </table>
             </div>
           )}
-        </div>
-
-        {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <User className="w-6 h-6 text-gray-700" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Total Enseignants</p>
-                <p className="text-2xl font-bold text-gray-900">{professeurs.length}</p>
-              </div>
-            </div>
-          </div>
           
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <BookOpen className="w-6 h-6 text-gray-700" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Spécialités</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {new Set(professeurs.filter(p => p.specialite).map(p => p.specialite)).size}
-                </p>
+          {/* Pagination */}
+          {filteredProfesseurs.length > itemsPerPage && (
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Affichage de {startIndex + 1} à {Math.min(endIndex, filteredProfesseurs.length)} sur {filteredProfesseurs.length} enseignants
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    Précédent
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 border rounded-lg text-sm ${
+                        currentPage === page
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'border-gray-300 hover:bg-gray-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    Suivant
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <Award className="w-6 h-6 text-gray-700" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Actifs</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {professeurs.filter(p => p.user.is_active).length}
-                </p>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

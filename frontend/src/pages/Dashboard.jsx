@@ -184,7 +184,7 @@ const Dashboard = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Actions rapides
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${isAdmin() ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
               {isAdmin() ? (
                 <>
                   <button 
@@ -212,6 +212,24 @@ const Dashboard = () => {
                     <UserPlus className="h-5 w-5 text-gray-600" />
                     <span className="font-medium text-gray-700">
                       Ajouter un enseignant
+                    </span>
+                  </button>
+                  <button 
+                    onClick={() => navigate('/consultation-notes')}
+                    className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all bg-gray-50 hover:bg-white"
+                  >
+                    <ClipboardList className="h-5 w-5 text-gray-600" />
+                    <span className="font-medium text-gray-700">
+                      Consulter les notes
+                    </span>
+                  </button>
+                  <button 
+                    onClick={() => navigate('/bulletins')}
+                    className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all bg-gray-50 hover:bg-white"
+                  >
+                    <FileText className="h-5 w-5 text-gray-600" />
+                    <span className="font-medium text-gray-700">
+                      Voir les bulletins
                     </span>
                   </button>
                 </>

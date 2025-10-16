@@ -12,6 +12,7 @@ import EleveNotes from './pages/EleveNotes';
 import Bulletins from './pages/Bulletins';
 import Parametres from './pages/Parametres';
 import Professeurs from './pages/Professeurs';
+import ConsultationNotes from './pages/ConsultationNotes';
 
 function App() {
   return (
@@ -100,6 +101,15 @@ function App() {
             element={
               <ProtectedRoute adminOnly={true}>
                 <Professeurs />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/consultation-notes"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <ConsultationNotes />
               </ProtectedRoute>
             }
           />

@@ -31,15 +31,25 @@ const Layout = ({ children }) => {
     { icon: Users, label: 'Élèves', path: '/eleves' },
     { icon: BookOpen, label: 'Classes', path: '/classes', adminOnly: true },
     { icon: BookOpen, label: 'Matières', path: '/matieres', adminOnly: true },
-    { icon: ClipboardList, label: 'Notes', path: '/notes' },
+    { icon: ClipboardList, label: 'Saisir Notes', path: '/notes', teacherOnly: true },
+    { icon: ClipboardList, label: 'Consulter Notes', path: '/consultation-notes', adminOnly: true },
     { icon: FileText, label: 'Bulletins', path: '/bulletins' },
     { icon: Users, label: 'Enseignants', path: '/professeurs', adminOnly: true },
-    { icon: Settings, label: 'Mon Profil', path: '/parametres' },
+    { icon: Settings, label: 'Mon Profil', path: '/parametres', teacherOnly: true },
   ];
 
-  const filteredMenuItems = menuItems.filter(
-    item => !item.adminOnly || isAdmin()
-  );
+  const filteredMenuItems = menuItems.filter(item => {
+    // Si l'item est réservé aux admins, vérifier que c'est un admin
+    if (item.adminOnly) {
+      return isAdmin();
+    }
+    // Si l'item est réservé aux enseignants, vérifier que ce n'est PAS un admin
+    if (item.teacherOnly) {
+      return !isAdmin();
+    }
+    // Sinon, afficher pour tout le monde
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -122,19 +132,13 @@ const Layout = ({ children }) => {
       {/* Main Content */}
       <div className="lg:pl-64">
         {/* Top Bar */}
-        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6">
+        <header className="h-16 bg-white shadow-sm flex items-center px-6">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-500 hover:text-gray-700"
           >
             <Menu className="h-6 w-6" />
           </button>
-
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">
-              Bienvenue, {user?.first_name}!
-            </span>
-          </div>
         </header>
 
         {/* Content */}

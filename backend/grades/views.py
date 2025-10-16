@@ -58,18 +58,20 @@ class TypeEvaluationViewSet(viewsets.ModelViewSet):
 class NoteViewSet(viewsets.ModelViewSet):
     """
     ViewSet pour les notes
-    - Enseignant : Peut saisir/modifier des notes pour SES élèves uniquement
-    - Admin : Peut tout voir et tout modifier
+    - Enseignant : Peut saisir/modifier/supprimer des notes pour SES élèves uniquement
+    - Admin : Peut UNIQUEMENT CONSULTER les notes (lecture seule)
     """
     serializer_class = NoteSerializer
     permission_classes = [IsTeacherOrAdmin]
     
     def get_permissions(self):
         """Permissions dynamiques selon l'action"""
-        if self.action in ['destroy']:
-            # Seul l'admin peut supprimer des notes
-            permission_classes = [IsAdminUser]
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'saisie_rapide']:
+            # SEULS les professeurs peuvent créer/modifier/supprimer des notes
+            from users.permissions import IsTeacherOnly
+            permission_classes = [IsTeacherOnly]
         else:
+            # Liste et détails : enseignants et admins
             permission_classes = [IsTeacherOrAdmin]
         return [permission() for permission in permission_classes]
     
@@ -111,37 +113,33 @@ class NoteViewSet(viewsets.ModelViewSet):
         """Ajouter automatiquement le professeur lors de la création"""
         user = self.request.user
         
-        # Vérifier que l'enseignant a le droit de saisir pour cet élève
-        if user.is_professeur() and not user.is_admin():
-            eleve = serializer.validated_data.get('eleve')
-            try:
-                prof = Professeur.objects.get(user=user)
-                if eleve.classe.professeur_principal != prof:
-                    raise serializers.ValidationError(
-                        "Vous ne pouvez saisir des notes que pour les élèves de votre classe"
-                    )
-            except Professeur.DoesNotExist:
-                raise serializers.ValidationError("Profil enseignant introuvable")
-        
-        serializer.save()
+        # Seul un professeur peut créer une note (déjà vérifié par IsTeacherOnly)
+        eleve = serializer.validated_data.get('eleve')
+        try:
+            prof = Professeur.objects.get(user=user)
+            if eleve.classe.professeur_principal != prof:
+                raise serializers.ValidationError(
+                    "Vous ne pouvez saisir des notes que pour les élèves de votre classe"
+                )
+            serializer.save(professeur=prof)
+        except Professeur.DoesNotExist:
+            raise serializers.ValidationError("Profil enseignant introuvable")
     
     def perform_update(self, serializer):
         """Vérifier les permissions avant mise à jour"""
         user = self.request.user
         instance = self.get_object()
         
-        # Vérifier que l'enseignant modifie ses propres notes
-        if user.is_professeur() and not user.is_admin():
-            try:
-                prof = Professeur.objects.get(user=user)
-                if instance.eleve.classe.professeur_principal != prof:
-                    raise serializers.ValidationError(
-                        "Vous ne pouvez modifier que les notes de votre classe"
-                    )
-            except Professeur.DoesNotExist:
-                raise serializers.ValidationError("Profil enseignant introuvable")
-        
-        serializer.save()
+        # Seul un professeur peut modifier (déjà vérifié par IsTeacherOnly)
+        try:
+            prof = Professeur.objects.get(user=user)
+            if instance.eleve.classe.professeur_principal != prof:
+                raise serializers.ValidationError(
+                    "Vous ne pouvez modifier que les notes de votre classe"
+                )
+            serializer.save()
+        except Professeur.DoesNotExist:
+            raise serializers.ValidationError("Profil enseignant introuvable")
     
     @action(detail=False, methods=['post'])
     def saisie_rapide(self, request):
@@ -160,11 +158,8 @@ class NoteViewSet(viewsets.ModelViewSet):
         type_eval = TypeEvaluation.objects.get(id=data['type_evaluation_id'])
         date_eval = data['date_evaluation']
         
-        # Vérifier les permissions pour l'enseignant
-        if user.is_professeur() and not user.is_admin():
-            prof = Professeur.objects.get(user=user)
-        else:
-            prof = None
+        # Récupérer le profil professeur (seuls les profs peuvent utiliser cette action)
+        prof = Professeur.objects.get(user=user)
         
         created_notes = []
         errors = []
@@ -174,7 +169,7 @@ class NoteViewSet(viewsets.ModelViewSet):
                 eleve = Eleve.objects.get(id=note_data['eleve_id'])
                 
                 # Vérifier que l'enseignant a le droit
-                if prof and eleve.classe.professeur_principal != prof:
+                if eleve.classe.professeur_principal != prof:
                     errors.append(f"Élève {eleve.nom_complet}: pas autorisé")
                     continue
                 
@@ -187,7 +182,7 @@ class NoteViewSet(viewsets.ModelViewSet):
                     defaults={
                         'valeur': note_data['valeur'],
                         'date_evaluation': date_eval,
-                        'professeur': prof if prof else request.user.professeur_profile if hasattr(request.user, 'professeur_profile') else None,
+                        'professeur': prof,
                         'commentaire': note_data.get('commentaire', '')
                     }
                 )

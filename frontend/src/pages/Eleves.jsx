@@ -16,6 +16,8 @@ const Eleves = () => {
   const [selectedClasse, setSelectedClasse] = useState('');
   const [importFile, setImportFile] = useState(null);
   const [importClasse, setImportClasse] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
     matricule: '',
@@ -178,6 +180,17 @@ const Eleves = () => {
     eleve.matricule.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Pagination
+  const totalPages = Math.ceil(filteredEleves.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentEleves = filteredEleves.slice(startIndex, endIndex);
+
+  // Reset page when search or classe changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedClasse]);
+
   if (loading) {
     return (
       <Layout>
@@ -226,6 +239,49 @@ const Eleves = () => {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Statistiques */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <User className="w-6 h-6 text-gray-700" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Total Élèves</p>
+                <p className="text-2xl font-bold text-gray-900">{eleves.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <User className="w-6 h-6 text-gray-700" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Garçons</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {eleves.filter(e => e.sexe === 'M').length}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <User className="w-6 h-6 text-gray-700" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Filles</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {eleves.filter(e => e.sexe === 'F').length}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Info pour enseignant */}
@@ -296,7 +352,7 @@ const Eleves = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredEleves.map((eleve) => (
+                {currentEleves.map((eleve) => (
                   <tr key={eleve.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {eleve.matricule}
@@ -360,16 +416,56 @@ const Eleves = () => {
               </tbody>
             </table>
           </div>
-
-          {filteredEleves.length === 0 && (
-            <div className="text-center py-12">
-              <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Aucun élève trouvé
-              </h3>
-              <p className="text-gray-600">
-                Ajoutez votre premier élève ou importez une liste
-              </p>
+          
+          {/* Pagination */}
+          {filteredEleves.length > itemsPerPage && (
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Affichage de {startIndex + 1} à {Math.min(endIndex, filteredEleves.length)} sur {filteredEleves.length} élèves
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    Précédent
+                  </button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-3 py-1 border rounded-lg text-sm ${
+                          currentPage === pageNum
+                            ? 'bg-gray-900 text-white border-gray-900'
+                            : 'border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    Suivant
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

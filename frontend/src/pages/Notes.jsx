@@ -20,6 +20,14 @@ const Notes = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   
+  // Bloquer l'accès aux administrateurs
+  useEffect(() => {
+    if (isAdmin()) {
+      alert('La saisie de notes est réservée aux enseignants. Les administrateurs peuvent consulter les notes dans le panneau d\'administration Django.');
+      navigate('/dashboard');
+    }
+  }, [isAdmin, navigate]);
+  
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list'); // 'list' ou 'grid'
   

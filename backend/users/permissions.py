@@ -23,6 +23,21 @@ class IsTeacherOrAdmin(permissions.BasePermission):
         return request.user and request.user.is_authenticated
 
 
+class IsTeacherOnly(permissions.BasePermission):
+    """
+    Permission pour les enseignants UNIQUEMENT.
+    Les administrateurs ne peuvent PAS effectuer ces actions.
+    Utilisé pour la saisie/modification des notes (réservée aux profs).
+    """
+    message = "Seuls les enseignants peuvent saisir ou modifier des notes."
+    
+    def has_permission(self, request, view):
+        return (request.user and 
+                request.user.is_authenticated and 
+                request.user.is_professeur() and 
+                not request.user.is_admin())
+
+
 class CanManageOwnClassOnly(permissions.BasePermission):
     """
     Permission pour gérer uniquement sa propre classe.

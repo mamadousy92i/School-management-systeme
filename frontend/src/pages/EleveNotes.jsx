@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import {
   periodeService,
@@ -14,6 +14,8 @@ import { ArrowLeft, Save, Plus, Trash2, Edit2, TrendingUp, Grid, List, Filter } 
 const EleveNotes = () => {
   const { eleveId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isReadOnly = searchParams.get('readonly') === 'true';
   
   const [loading, setLoading] = useState(true);
   const [eleve, setEleve] = useState(null);
@@ -180,11 +182,26 @@ const EleveNotes = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        {/* Message lecture seule */}
+        {isReadOnly && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Filter className="w-5 h-5 text-blue-600 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-900 font-medium">Mode consultation uniquement</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Vous consultez les notes en lecture seule. Seuls les enseignants peuvent modifier les notes.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate('/notes')}
+              onClick={() => navigate(isReadOnly ? '/consultation-notes' : '/notes')}
               className="p-2 hover:bg-gray-100 rounded-lg transition"
             >
               <ArrowLeft className="h-6 w-6" />
@@ -199,13 +216,15 @@ const EleveNotes = () => {
             </div>
           </div>
           
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Ajouter une note</span>
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              <Plus className="h-5 w-5" />
+              <span>Ajouter une note</span>
+            </button>
+          )}
         </div>
 
         {/* Filtres */}
@@ -377,18 +396,24 @@ const EleveNotes = () => {
                               {note.commentaire || '-'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button
-                                onClick={() => handleEdit(note)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition mr-2"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(note.id)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              {!isReadOnly ? (
+                                <>
+                                  <button
+                                    onClick={() => handleEdit(note)}
+                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition mr-2"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(note.id)}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-gray-400 text-xs italic">Lecture seule</span>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -445,22 +470,24 @@ const EleveNotes = () => {
                           )}
                         </div>
 
-                        <div className="flex space-x-2 pt-4 border-t">
-                          <button
-                            onClick={() => handleEdit(note)}
-                            className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                            <span>Modifier</span>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(note.id)}
-                            className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span>Supprimer</span>
-                          </button>
-                        </div>
+                        {!isReadOnly && (
+                          <div className="flex space-x-2 pt-4 border-t">
+                            <button
+                              onClick={() => handleEdit(note)}
+                              className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                              <span>Modifier</span>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(note.id)}
+                              className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span>Supprimer</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
