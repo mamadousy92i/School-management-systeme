@@ -220,6 +220,7 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = MoyenneEleveSerializer
     permission_classes = [IsTeacherOrAdmin]
+    pagination_class = None  # Désactiver la pagination pour toutes les actions
     
     def get_queryset(self):
         user = self.request.user
@@ -325,13 +326,35 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 'directeur': request.user.ecole.directeur
             }
         
+        # Calculer la moyenne annuelle si c'est le 3ème trimestre
+        moyenne_annuelle = None
+        nombre_trimestres = 0
+        
+        if periode.nom == 'trimestre3':
+            periodes_annee = Periode.objects.filter(
+                annee_scolaire=periode.annee_scolaire
+            ).order_by('nom')
+            
+            moyennes_trimestres = []
+            for p in periodes_annee:
+                moy = MoyenneEleve.calculer_moyenne_generale(eleve, p)
+                if moy is not None:
+                    moyennes_trimestres.append(moy)
+            
+            if moyennes_trimestres:
+                moyenne_annuelle = sum(moyennes_trimestres) / len(moyennes_trimestres)
+                nombre_trimestres = len(moyennes_trimestres)
+        
         data = {
             'eleve_id': eleve.id,
             'eleve_nom': eleve.nom_complet,
             'periode_id': periode.id,
             'periode_nom': periode.get_nom_display(),
+            'periode_code': periode.nom,
             'annee_scolaire': periode.annee_scolaire.libelle,
             'moyenne_generale': moyenne_gen,
+            'moyenne_annuelle': moyenne_annuelle,
+            'nombre_trimestres': nombre_trimestres,
             'nombre_matieres': moyennes.count(),
             'moyennes_par_matiere': MoyenneEleveSerializer(moyennes, many=True).data,
             'rang': rang,
@@ -404,12 +427,155 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 'has_notes': notes_count > 0
             })
         
+        # Calculer les rangs avec gestion des ex-aequo
+        # Trier par moyenne décroissante
+        resultats_tries = sorted(
+            resultats, 
+            key=lambda x: x['moyenne_generale'] if x['moyenne_generale'] is not None else -1,
+            reverse=True
+        )
+        
+        # Attribuer les rangs de manière plus simple et correcte
+        rang_actuel = 0
+        moyenne_precedente = None
+        
+        for i, eleve in enumerate(resultats_tries):
+            if eleve['moyenne_generale'] is None:
+                eleve['rang'] = None
+            else:
+                # Si la moyenne est différente de la précédente, nouveau rang = position + 1
+                if i == 0 or eleve['moyenne_generale'] != moyenne_precedente:
+                    rang_actuel = i + 1  # Le rang = position dans le classement (1-indexed)
+                
+                eleve['rang'] = rang_actuel
+                moyenne_precedente = eleve['moyenne_generale']
+        
         return Response({
             'classe_id': classe.id,
             'classe_nom': classe.nom,
             'periode_id': periode.id,
             'periode_nom': periode.get_nom_display(),
-            'eleves': resultats
+            'effectif_classe': eleves.count(),  # Nombre total d'élèves dans la classe
+            'eleves': resultats_tries  # Retourner la liste triée avec rangs
+        })
+    
+    @action(detail=False, methods=['get'])
+    def bulletins_classe(self, request):
+        """Obtenir toutes les données nécessaires pour les bulletins d'une classe (optimisé)"""
+        classe_id = request.query_params.get('classe')
+        periode_id = request.query_params.get('periode')
+        
+        if not classe_id or not periode_id:
+            return Response(
+                {'error': 'Paramètres classe et periode requis'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from academic.models import Classe
+            classe = Classe.objects.get(id=classe_id)
+            periode = Periode.objects.get(id=periode_id)
+        except (Classe.DoesNotExist, Periode.DoesNotExist):
+            return Response(
+                {'error': 'Classe ou période introuvable'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Vérifier les permissions
+        user = request.user
+        if user.is_professeur() and not user.is_admin():
+            prof = Professeur.objects.get(user=user)
+            if classe.professeur_principal != prof:
+                return Response(
+                    {'error': 'Non autorisé'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Récupérer tous les élèves avec notes
+        eleves = Eleve.objects.filter(classe=classe, statut='actif')
+        
+        bulletins_data = []
+        for eleve in eleves:
+            notes_count = Note.objects.filter(eleve=eleve, periode=periode).count()
+            if notes_count == 0:
+                continue
+            
+            # Calculer la moyenne générale
+            moyenne_gen = MoyenneEleve.calculer_moyenne_generale(eleve, periode)
+            if moyenne_gen is None:
+                continue
+            
+            # Récupérer les moyennes par matière
+            moyennes = MoyenneEleve.objects.filter(
+                eleve=eleve,
+                periode=periode
+            ).select_related('matiere')
+            
+            bulletins_data.append({
+                'eleve': {
+                    'id': eleve.id,
+                    'matricule': eleve.matricule,
+                    'nom': eleve.nom,
+                    'prenom': eleve.prenom,
+                    'sexe': eleve.sexe,
+                    'classe_nom': classe.nom
+                },
+                'moyenne_generale': moyenne_gen,
+                'moyennes_par_matiere': MoyenneEleveSerializer(moyennes, many=True).data
+            })
+        
+        # Calculer les rangs
+        bulletins_data.sort(key=lambda x: x['moyenne_generale'], reverse=True)
+        rang_actuel = 0
+        moyenne_precedente = None
+        
+        for i, bulletin in enumerate(bulletins_data):
+            if i == 0 or bulletin['moyenne_generale'] != moyenne_precedente:
+                rang_actuel = i + 1
+            bulletin['rang'] = rang_actuel
+            moyenne_precedente = bulletin['moyenne_generale']
+        
+        # Détecter les ex-aequo
+        rangs_count = {}
+        for bulletin in bulletins_data:
+            rang = bulletin['rang']
+            rangs_count[rang] = rangs_count.get(rang, 0) + 1
+        
+        for bulletin in bulletins_data:
+            bulletin['isExaequo'] = rangs_count[bulletin['rang']] > 1
+            bulletin['effectif_classe'] = len(bulletins_data)
+            
+            # Si c'est le 3ème trimestre, calculer la moyenne annuelle
+            if periode.nom == 'trimestre3':
+                eleve_id = bulletin['eleve']['id']
+                eleve_obj = Eleve.objects.get(id=eleve_id)
+                
+                # Récupérer toutes les périodes de l'année scolaire
+                periodes_annee = Periode.objects.filter(
+                    annee_scolaire=periode.annee_scolaire
+                ).order_by('nom')
+                
+                moyennes_trimestres = []
+                for p in periodes_annee:
+                    moy = MoyenneEleve.calculer_moyenne_generale(eleve_obj, p)
+                    if moy is not None:
+                        moyennes_trimestres.append(moy)
+                
+                if moyennes_trimestres:
+                    bulletin['moyenne_annuelle'] = sum(moyennes_trimestres) / len(moyennes_trimestres)
+                    bulletin['nombre_trimestres'] = len(moyennes_trimestres)
+                else:
+                    bulletin['moyenne_annuelle'] = None
+                    bulletin['nombre_trimestres'] = 0
+            else:
+                bulletin['moyenne_annuelle'] = None
+                bulletin['nombre_trimestres'] = 0
+        
+        return Response({
+            'classe_nom': classe.nom,
+            'periode_nom': periode.get_nom_display(),
+            'periode_code': periode.nom,  # Pour détecter le trimestre
+            'bulletins': bulletins_data
         })
     
     @action(detail=False, methods=['post'])

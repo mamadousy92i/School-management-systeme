@@ -58,6 +58,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.TenantMiddleware',  # Multi-tenant : Injecte l'école
+    'core.middleware.TenantSecurityMiddleware',  # Multi-tenant : Sécurité
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -138,13 +140,13 @@ AUTH_USER_MODEL = 'users.User'
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'users.authentication.CustomJWTAuthentication',  # Custom JWT avec chargement de l'école
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    'PAGE_SIZE': 1000,  # Limite haute pour éviter les problèmes de pagination
 }
 
 # Simple JWT Configuration

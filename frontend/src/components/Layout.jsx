@@ -12,7 +12,9 @@ import {
   FileText,
   Home,
   Settings,
-  ChevronRight
+  ChevronRight,
+  GitBranch,
+  ArrowRightLeft
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -27,7 +29,8 @@ const Layout = ({ children }) => {
   };
 
   const menuItems = [
-    { icon: Home, label: 'Accueil', path: '/dashboard' },
+    { icon: Home, label: 'Accueil École', path: '/accueil' },
+    { icon: Home, label: 'Dashboard', path: '/dashboard' },
     { icon: Users, label: 'Élèves', path: '/eleves' },
     { icon: BookOpen, label: 'Classes', path: '/classes', adminOnly: true },
     { icon: BookOpen, label: 'Matières', path: '/matieres', adminOnly: true },
@@ -36,6 +39,8 @@ const Layout = ({ children }) => {
     { icon: FileText, label: 'Bulletins', path: '/bulletins' },
     { icon: Users, label: 'Enseignants', path: '/professeurs', adminOnly: true },
     { icon: Settings, label: 'Mon Profil', path: '/parametres', teacherOnly: true },
+    { icon: GitBranch, label: 'Passages Classe', path: '/passage-classe' },
+    { icon: ArrowRightLeft, label: 'Passages (Admin)', path: '/passage-classe-admin', adminOnly: true },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
@@ -52,7 +57,7 @@ const Layout = ({ children }) => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 min-h-screen">
       {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
@@ -60,23 +65,23 @@ const Layout = ({ children }) => {
         } lg:translate-x-0`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
+        <div className="flex justify-between items-center px-6 border-gray-200 border-b h-16">
           <div className="flex items-center space-x-2">
-            <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <GraduationCap className="h-6 w-6 text-white" />
+            <div className="flex justify-center items-center bg-blue-600 rounded-lg w-10 h-10">
+              <GraduationCap className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-800">SGS</span>
+            <span className="font-bold text-gray-800 text-xl">SGS</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-gray-500 hover:text-gray-700"
           >
-            <X className="h-6 w-6" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        <nav className="flex-1 space-y-1 px-4 py-6">
           {filteredMenuItems.map((item, index) => {
             const isActive = location.pathname === item.path;
             return (
@@ -93,38 +98,38 @@ const Layout = ({ children }) => {
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <item.icon className="h-5 w-5" />
+                  <item.icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>
                 </div>
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             );
           })}
         </nav>
 
         {/* User Profile */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        <div className="right-0 bottom-0 left-0 absolute p-4 border-gray-200 border-t">
           <div className="flex items-center space-x-3 mb-3">
-            <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-sm">
+            <div className="flex justify-center items-center bg-gradient-to-r from-blue-500 to-purple-500 rounded-full w-10 h-10">
+              <span className="font-bold text-white text-sm">
                 {user?.first_name?.[0]}{user?.last_name?.[0]}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="font-medium text-gray-900 text-sm truncate">
                 {user?.first_name} {user?.last_name}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-gray-500 text-xs truncate">
                 {user?.role === 'admin' ? 'Administrateur' : 'Professeur'}
               </p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+            className="flex justify-center items-center space-x-2 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg w-full text-red-600 transition"
           >
-            <LogOut className="h-4 w-4" />
-            <span className="text-sm font-medium">Déconnexion</span>
+            <LogOut className="w-4 h-4" />
+            <span className="font-medium text-sm">Déconnexion</span>
           </button>
         </div>
       </aside>
@@ -132,12 +137,12 @@ const Layout = ({ children }) => {
       {/* Main Content */}
       <div className="lg:pl-64">
         {/* Top Bar */}
-        <header className="h-16 bg-white shadow-sm flex items-center px-6">
+        <header className="flex items-center bg-white shadow-sm px-6 h-16">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-500 hover:text-gray-700"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="w-6 h-6" />
           </button>
         </header>
 
@@ -148,7 +153,7 @@ const Layout = ({ children }) => {
       {/* Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="lg:hidden z-40 fixed inset-0 bg-black bg-opacity-50"
           onClick={() => setSidebarOpen(false)}
         ></div>
       )}

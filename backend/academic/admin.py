@@ -4,26 +4,26 @@ from .models import Ecole, AnneeScolaire, Classe, Matiere, Eleve, MatiereClasse
 
 @admin.register(Ecole)
 class EcoleAdmin(admin.ModelAdmin):
-    list_display = ['nom', 'sigle', 'directeur', 'telephone', 'email', 'active', 'created_at']
-    list_filter = ['active', 'created_at']
-    search_fields = ['nom', 'sigle', 'directeur', 'adresse', 'email']
-    readonly_fields = ['created_at', 'updated_at']
-    date_hierarchy = 'created_at'
+    list_display = ['nom', 'code', 'directrice', 'telephone', 'email', 'abonnement_actif', 'date_creation']
+    list_filter = ['abonnement_actif', 'date_creation']
+    search_fields = ['nom', 'code', 'directrice', 'adresse', 'email']
+    readonly_fields = ['date_creation']
+    date_hierarchy = 'date_creation'
     fieldsets = (
         ('Informations générales', {
-            'fields': ('nom', 'sigle', 'active')
+            'fields': ('nom', 'code', 'directrice', 'devise')
         }),
         ('Contact', {
             'fields': ('adresse', 'telephone', 'email')
         }),
-        ('Direction', {
-            'fields': ('directeur', 'devise')
-        }),
-        ('Visuel', {
+        ('Branding', {
             'fields': ('logo',)
         }),
+        ('Abonnement SaaS', {
+            'fields': ('abonnement_actif', 'date_expiration', 'max_eleves', 'max_professeurs')
+        }),
         ('Dates', {
-            'fields': ('created_at', 'updated_at'),
+            'fields': ('date_creation',),
             'classes': ('collapse',)
         }),
     )

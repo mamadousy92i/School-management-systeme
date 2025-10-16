@@ -41,7 +41,7 @@ const ConsultationNotes = () => {
   const [selectedClasse, setSelectedClasse] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadData();
@@ -130,10 +130,10 @@ const ConsultationNotes = () => {
 
   const getStatutNote = (moyenne) => {
     if (!moyenne) return { label: 'Non noté', color: 'gray' };
-    if (moyenne >= 16) return { label: 'Excellent', color: 'green' };
-    if (moyenne >= 14) return { label: 'Très bien', color: 'blue' };
-    if (moyenne >= 12) return { label: 'Bien', color: 'indigo' };
-    if (moyenne >= 10) return { label: 'Passable', color: 'yellow' };
+    if (moyenne >= 8) return { label: 'Très Bien', color: 'green' };
+    if (moyenne >= 7) return { label: 'Bien', color: 'blue' };
+    if (moyenne >= 6) return { label: 'Assez Bien', color: 'indigo' };
+    if (moyenne >= 5) return { label: 'Passable', color: 'yellow' };
     return { label: 'Insuffisant', color: 'red' };
   };
 
@@ -327,7 +327,7 @@ const ConsultationNotes = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-bold text-gray-900">
-                              {eleve.moyenne_generale ? eleve.moyenne_generale.toFixed(2) : '-'} / 20
+                              {eleve.moyenne_generale ? eleve.moyenne_generale.toFixed(2) : '-'} / 10
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -353,53 +353,74 @@ const ConsultationNotes = () => {
             )}
             
             {/* Pagination */}
-            {filteredEleves.length > itemsPerPage && (
+            {filteredEleves.length > 0 && (
               <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    Affichage de {startIndex + 1} à {Math.min(endIndex, filteredEleves.length)} sur {filteredEleves.length} élèves
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm text-gray-700">
+                      Affichage de {startIndex + 1} à {Math.min(endIndex, filteredEleves.length)} sur {filteredEleves.length} élèves
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm text-gray-600">Par page:</label>
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                          setItemsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="border border-gray-300 rounded px-2 py-1 text-sm"
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                        <option value={9999}>Tous</option>
+                      </select>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      Précédent
-                    </button>
-                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={`px-3 py-1 border rounded-lg text-sm ${
-                            currentPage === pageNum
-                              ? 'bg-gray-900 text-white border-gray-900'
-                              : 'border-gray-300 hover:bg-gray-100'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      Suivant
-                    </button>
-                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      >
+                        Précédent
+                      </button>
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`px-3 py-1 border rounded-lg text-sm ${
+                              currentPage === pageNum
+                                ? 'bg-gray-900 text-white border-gray-900'
+                                : 'border-gray-300 hover:bg-gray-100'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      >
+                        Suivant
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

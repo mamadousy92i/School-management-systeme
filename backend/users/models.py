@@ -47,6 +47,14 @@ class Admin(models.Model):
 class Professeur(models.Model):
     """Modèle pour les professeurs"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='professeur_profile')
+    ecole = models.ForeignKey(
+        'academic.Ecole',
+        on_delete=models.CASCADE,
+        related_name='professeurs',
+        null=True,  # Temporaire pour la migration
+        blank=True,
+        verbose_name="École"
+    )
     matricule = models.CharField(max_length=20, unique=True)
     specialite = models.CharField(max_length=100, blank=True, null=True)
     diplome = models.CharField(max_length=200, blank=True, null=True)

@@ -23,6 +23,8 @@ export default function Professeurs() {
   const [editingProf, setEditingProf] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 3;
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -61,16 +63,33 @@ export default function Professeurs() {
     }));
   };
 
+  const handleNext = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Si pas à la dernière étape, passer à la suivante
+    if (currentStep < totalSteps) {
+      handleNext();
+      return;
+    }
+    
+    // Dernière étape : soumettre le formulaire
     try {
       if (editingProf) {
-        // Mise à jour
         await professeurService.update(editingProf.id, formData);
         alert('Enseignant modifié avec succès');
       } else {
-        // Création
         await professeurService.create(formData);
         alert('Enseignant créé avec succès');
       }
@@ -118,6 +137,7 @@ export default function Professeurs() {
 
   const resetForm = () => {
     setEditingProf(null);
+    setCurrentStep(1);
     setFormData({
       username: '',
       email: '',
@@ -366,203 +386,296 @@ export default function Professeurs() {
 
       {/* Modal Ajout/Modification */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {editingProf ? 'Modifier l\'enseignant' : 'Nouvel enseignant'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  resetForm();
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Compte utilisateur */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Compte utilisateur</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nom d'utilisateur *
-                    </label>
-                    <input
-                      type="text"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleInputChange}
-                      required
-                      disabled={editingProf}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent disabled:bg-gray-100"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  {!editingProf && (
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Mot de passe *
-                      </label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        required={!editingProf}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                      />
-                    </div>
-                  )}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full my-8">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {editingProf ? 'Modifier l\'enseignant' : 'Nouvel enseignant'}
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Étape {currentStep} sur {totalSteps}
+                  </p>
                 </div>
-              </div>
-
-              {/* Informations personnelles */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Informations personnelles</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Prénom *
-                    </label>
-                    <input
-                      type="text"
-                      name="first_name"
-                      value={formData.first_name}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nom *
-                    </label>
-                    <input
-                      type="text"
-                      name="last_name"
-                      value={formData.last_name}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Téléphone
-                    </label>
-                    <input
-                      type="tel"
-                      name="telephone"
-                      value={formData.telephone}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Matricule *
-                    </label>
-                    <input
-                      type="text"
-                      name="matricule"
-                      value={formData.matricule}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Informations professionnelles */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Informations professionnelles</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Spécialité
-                    </label>
-                    <input
-                      type="text"
-                      name="specialite"
-                      value={formData.specialite}
-                      onChange={handleInputChange}
-                      placeholder="Ex: Mathématiques"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Diplôme
-                    </label>
-                    <input
-                      type="text"
-                      name="diplome"
-                      value={formData.diplome}
-                      onChange={handleInputChange}
-                      placeholder="Ex: Licence en Mathématiques"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date d'embauche
-                    </label>
-                    <input
-                      type="date"
-                      name="date_embauche"
-                      value={formData.date_embauche}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Boutons */}
-              <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              {/* Stepper */}
+              <div className="flex items-center justify-between">
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className="flex items-center flex-1">
+                    <div className="flex items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition ${
+                        step < currentStep ? 'bg-green-500 text-white' :
+                        step === currentStep ? 'bg-gray-900 text-white' :
+                        'bg-gray-200 text-gray-500'
+                      }`}>
+                        {step < currentStep ? '✓' : step}
+                      </div>
+                      <span className={`ml-2 text-xs font-medium ${
+                        step === currentStep ? 'text-gray-900' : 'text-gray-500'
+                      }`}>
+                        {step === 1 ? 'Compte' : step === 2 ? 'Personnel' : 'Professionnel'}
+                      </span>
+                    </div>
+                    {step < totalSteps && (
+                      <div className={`flex-1 h-0.5 mx-2 ${
+                        step < currentStep ? 'bg-green-500' : 'bg-gray-200'
+                      }`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Form Content - Scrollable */}
+            <form onSubmit={handleSubmit} className="max-h-[60vh] overflow-y-auto">
+              <div className="p-6">
+                {/* Étape 1: Compte utilisateur */}
+                {currentStep === 1 && (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-gray-900 p-1.5 rounded-lg">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-900">Compte utilisateur</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nom d'utilisateur <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleInputChange}
+                        required
+                        disabled={editingProf}
+                        placeholder="ex: jdupont"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="ex: jean.dupont@ecole.sn"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition"
+                      />
+                    </div>
+                    
+                    {!editingProf && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Mot de passe <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="password"
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          required={!editingProf}
+                          placeholder="••••••••"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                )}
+
+                {/* Étape 2: Informations personnelles */}
+                {currentStep === 2 && (
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-blue-600 p-1.5 rounded-lg">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-900">Informations personnelles</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Prénom <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="first_name"
+                        value={formData.first_name}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="ex: Jean"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nom <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="last_name"
+                        value={formData.last_name}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="ex: Dupont"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Téléphone
+                      </label>
+                      <input
+                        type="tel"
+                        name="telephone"
+                        value={formData.telephone}
+                        onChange={handleInputChange}
+                        placeholder="ex: +221 77 123 45 67"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Matricule <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="matricule"
+                        value={formData.matricule}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="ex: PROF001"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
+
+                {/* Étape 3: Informations professionnelles */}
+                {currentStep === 3 && (
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-green-600 p-1.5 rounded-lg">
+                      <BookOpen className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-900">Informations professionnelles</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Spécialité
+                      </label>
+                      <input
+                        type="text"
+                        name="specialite"
+                        value={formData.specialite}
+                        onChange={handleInputChange}
+                        placeholder="ex: Mathématiques"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Diplôme
+                      </label>
+                      <input
+                        type="text"
+                        name="diplome"
+                        value={formData.diplome}
+                        onChange={handleInputChange}
+                        placeholder="ex: Licence en Mathématiques"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Date d'embauche
+                      </label>
+                      <input
+                        type="date"
+                        name="date_embauche"
+                        value={formData.date_embauche}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
+
+              </div>
+            </form>
+
+            {/* Footer Actions - Sticky */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+              <div>
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={handlePrevious}
+                    className="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-white hover:border-gray-400 transition font-medium"
+                  >
+                    ← Précédent
+                  </button>
+                )}
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
+                  className="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-white hover:border-gray-400 transition font-medium"
                 >
                   Annuler
                 </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
-                >
-                  {editingProf ? 'Modifier' : 'Créer'}
-                </button>
+                
+                {currentStep < totalSteps ? (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium shadow-sm"
+                  >
+                    Suivant →
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium shadow-sm"
+                  >
+                    {editingProf ? '✓ Modifier' : '+ Créer'}
+                  </button>
+                )}
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

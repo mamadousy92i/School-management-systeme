@@ -33,6 +33,10 @@ const Bulletins = () => {
   const [previewData, setPreviewData] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const bulletinRef = useRef(null);
+  
+  // Barre de progression pour téléchargement groupé
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -80,30 +84,35 @@ const Bulletins = () => {
     
     setLoading(true);
     try {
-      // Charger élèves et moyennes en parallèle
-      const [elevesData, moyennesResponse] = await Promise.all([
-        eleveService.getAll({ classe: selectedClasse }),
-        moyenneService.getClasseMoyennes({
-          classe: selectedClasse,
-          periode: selectedPeriode
-        })
-      ]);
+      // Charger les moyennes (qui contient déjà toutes les infos des élèves)
+      const moyennesResponse = await moyenneService.getClasseMoyennes({
+        classe: selectedClasse,
+        periode: selectedPeriode
+      });
       
-      const elevesListe = elevesData.results || elevesData || [];
-      setEleves(elevesListe);
+      // Utiliser directement les données de moyennesResponse qui contient TOUS les élèves
+      const elevesData = moyennesResponse.eleves || [];
       
-      // Enrichir avec les moyennes
-      const elevesEnriched = elevesListe.map(eleve => {
-        const eleveData = moyennesResponse.eleves?.find(e => e.eleve_id === eleve.id);
+      // Transformer les données pour correspondre au format attendu
+      const elevesEnriched = elevesData.map(eleveData => {
         return {
-          ...eleve,
-          notesCount: eleveData?.notes_count || 0,
-          moyenneGenerale: eleveData?.moyenne_generale || null,
-          hasNotes: eleveData?.has_notes || false,
-          nombreMatieres: eleveData?.nombre_matieres || 0
+          id: eleveData.eleve_id,
+          matricule: eleveData.matricule,
+          nom: eleveData.nom,
+          prenom: eleveData.prenom,
+          nom_complet: eleveData.nom_complet,
+          classe_nom: moyennesResponse.classe_nom,  // Ajouter le nom de la classe
+          classe: selectedClasse,  // Ajouter l'ID de la classe
+          notesCount: eleveData.notes_count || 0,
+          moyenneGenerale: eleveData.moyenne_generale || null,
+          hasNotes: eleveData.has_notes || false,
+          nombreMatieres: eleveData.nombre_matieres || 0,
+          rang: eleveData.rang || null,
+          effectif_classe: moyennesResponse.effectif_classe || elevesData.length
         };
       });
       
+      setEleves(elevesEnriched);
       setElevesWithMoyennes(elevesEnriched);
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
@@ -117,7 +126,13 @@ const Bulletins = () => {
     setShowPreview(true);
     try {
       const data = await moyenneService.getMoyenneGenerale(eleve.id, selectedPeriode);
-      setPreviewData({ ...data, eleve });
+      setPreviewData({ 
+        ...data, 
+        eleve,
+        rang: eleve.rang,  // Ajouter le rang
+        effectif_classe: eleve.effectif_classe,  // Ajouter l'effectif
+        isExaequo: eleve.isExaequo  // Ajouter l'info ex-aequo
+      });
     } catch (error) {
       console.error('Erreur:', error);
       setPreviewData(null);
@@ -135,7 +150,13 @@ const Bulletins = () => {
       
       if (!dataToExport) {
         const data = await moyenneService.getMoyenneGenerale(eleve.id, selectedPeriode);
-        dataToExport = { ...data, eleve };
+        dataToExport = { 
+          ...data, 
+          eleve,
+          rang: eleve.rang,  // Ajouter le rang
+          effectif_classe: eleve.effectif_classe,  // Ajouter l'effectif
+          isExaequo: eleve.isExaequo  // Ajouter l'info ex-aequo
+        };
       }
       
       // Créer un élément temporaire pour le PDF
@@ -177,6 +198,231 @@ const Bulletins = () => {
     }
   };
 
+  // Télécharger tous les bulletins de la classe en un seul PDF - VERSION OPTIMISÉE
+  const handleDownloadAllBulletinsOptimized = async () => {
+    if (!selectedClasse || !selectedPeriode) {
+      alert('Veuillez sélectionner une classe et une période');
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      setDownloadProgress(10);
+      console.log('⚡ Chargement OPTIMISÉ de tous les bulletins...');
+      
+      // UNE SEULE requête pour tout récupérer !
+      const response = await moyenneService.getBulletinsClasse(selectedClasse, selectedPeriode);
+      setDownloadProgress(30);
+      
+      const bulletinsData = response.bulletins || [];
+      
+      if (bulletinsData.length === 0) {
+        alert('Aucun bulletin disponible pour cette classe');
+        setIsDownloading(false);
+        setDownloadProgress(0);
+        return;
+      }
+
+      console.log(`✓ ${bulletinsData.length} bulletins chargés en une seule requête !`);
+      console.log('Génération du PDF...');
+      setDownloadProgress(50);
+
+      // Calculer la moyenne de classe
+      const totalMoyennes = bulletinsData.reduce((sum, b) => sum + b.moyenne_generale, 0);
+      const moyenneClasse = totalMoyennes / bulletinsData.length;
+
+      // Créer un élément contenant tous les bulletins
+      const element = document.createElement('div');
+      element.style.width = '210mm';
+      element.style.backgroundColor = 'white';
+      
+      // Générer le HTML pour tous les bulletins
+      bulletinsData.forEach((bulletin, index) => {
+        // Enrichir les données avec toutes les infos nécessaires
+        const enrichedBulletin = {
+          ...bulletin,
+          periode_nom: response.periode_nom,
+          periode_code: response.periode_code,
+          total_eleves: bulletinsData.length,
+          moyenne_classe: moyenneClasse
+        };
+        
+        console.log('Bulletin data for', bulletin.eleve.nom, ':', enrichedBulletin); // Debug
+        
+        const bulletinDiv = document.createElement('div');
+        bulletinDiv.innerHTML = generateBulletinHTML(enrichedBulletin);
+        bulletinDiv.style.padding = '20mm';
+        bulletinDiv.style.webkitFontSmoothing = 'antialiased';
+        bulletinDiv.style.mozOsxFontSmoothing = 'grayscale';
+        
+        if (index < bulletinsData.length - 1) {
+          bulletinDiv.style.pageBreakAfter = 'always';
+        }
+        
+        element.appendChild(bulletinDiv);
+        
+        // Mettre à jour la progression (50% à 70%)
+        const progress = 50 + ((index + 1) / bulletinsData.length) * 20;
+        setDownloadProgress(Math.round(progress));
+      });
+
+      const filename = `Bulletins_${response.classe_nom}_${response.periode_nom.replace(/\s+/g, '_')}.pdf`;
+
+      // Options optimisées
+      const options = {
+        margin: [8, 8, 8, 8],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.85 },
+        html2canvas: { 
+          scale: 1.5,
+          useCORS: true, 
+          letterRendering: true,
+          logging: false
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+      
+      setDownloadProgress(75);
+      console.log('Conversion en PDF...');
+      
+      await html2pdf().set(options).from(element).save();
+      
+      setDownloadProgress(100);
+      console.log('✓ PDF généré avec succès !');
+      
+      // Attendre un peu pour que l'utilisateur voie 100%
+      setTimeout(() => {
+        setIsDownloading(false);
+        setDownloadProgress(0);
+        alert(`✓ ${bulletinsData.length} bulletin(s) téléchargé(s) avec succès !`);
+      }, 500);
+      
+    } catch (error) {
+      console.error('Erreur:', error);
+      setIsDownloading(false);
+      setDownloadProgress(0);
+      alert('Erreur lors de la génération du PDF. Veuillez réessayer.');
+    }
+  };
+
+  // Télécharger tous les bulletins de la classe en un seul PDF - VERSION STANDARD
+  const handleDownloadAllBulletins = async () => {
+    if (!selectedClasse || !selectedPeriode) {
+      alert('Veuillez sélectionner une classe et une période');
+      return;
+    }
+
+    // Filtrer seulement les élèves qui ont des notes
+    const elevesAvecNotes = elevesWithExaequo.filter(e => e.hasNotes);
+    
+    if (elevesAvecNotes.length === 0) {
+      alert('Aucun élève avec des notes dans cette classe');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Afficher un message de progression
+      const totalEleves = elevesAvecNotes.length;
+      console.log(`Chargement des données de ${totalEleves} élèves...`);
+      
+      // Charger les données de tous les élèves en parallèle par lots de 5
+      // pour ne pas surcharger le serveur
+      const batchSize = 5;
+      const bulletinsData = [];
+      
+      for (let i = 0; i < elevesAvecNotes.length; i += batchSize) {
+        const batch = elevesAvecNotes.slice(i, i + batchSize);
+        console.log(`Chargement élèves ${i + 1} à ${Math.min(i + batchSize, totalEleves)}...`);
+        
+        const batchResults = await Promise.all(
+          batch.map(async (eleve) => {
+            const data = await moyenneService.getMoyenneGenerale(eleve.id, selectedPeriode);
+            return {
+              ...data,
+              eleve,
+              rang: eleve.rang,
+              effectif_classe: eleve.effectif_classe,
+              isExaequo: eleve.isExaequo
+            };
+          })
+        );
+        
+        bulletinsData.push(...batchResults);
+      }
+      
+      console.log(`Génération du PDF avec ${bulletinsData.length} bulletins...`);
+
+      // Créer un élément contenant tous les bulletins
+      const element = document.createElement('div');
+      element.style.width = '210mm';
+      element.style.backgroundColor = 'white';
+      
+      // Générer le HTML pour tous les bulletins avec saut de page
+      bulletinsData.forEach((data, index) => {
+        const bulletinDiv = document.createElement('div');
+        bulletinDiv.innerHTML = generateBulletinHTML(data);
+        bulletinDiv.style.padding = '20mm';
+        bulletinDiv.style.webkitFontSmoothing = 'antialiased';
+        bulletinDiv.style.mozOsxFontSmoothing = 'grayscale';
+        
+        // Ajouter saut de page sauf pour le dernier
+        if (index < bulletinsData.length - 1) {
+          bulletinDiv.style.pageBreakAfter = 'always';
+        }
+        
+        element.appendChild(bulletinDiv);
+      });
+
+      // Obtenir les informations de classe et période
+      const classeInfo = classes.find(c => c.id === parseInt(selectedClasse));
+      const periodeInfo = periodes.find(p => p.id === parseInt(selectedPeriode));
+      
+      const filename = `Bulletins_${classeInfo?.nom}_${periodeInfo?.nom_display.replace(/\s+/g, '_')}.pdf`;
+
+      // Options pour html2pdf - Optimisées pour la vitesse
+      const options = {
+        margin: [8, 8, 8, 8],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.85 },  // Réduit de 0.98 à 0.85 pour plus de vitesse
+        html2canvas: { 
+          scale: 1.5,  // Réduit de 2 à 1.5 pour plus de vitesse
+          useCORS: true, 
+          letterRendering: true,
+          logging: false
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+      
+      console.log('Conversion en PDF en cours...');
+      
+      // Générer le PDF
+      await html2pdf().set(options).from(element).save();
+      
+      console.log('✓ PDF généré avec succès !');
+      alert(`${bulletinsData.length} bulletin(s) téléchargé(s) avec succès !`);
+      
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      alert('Erreur lors de la génération du PDF. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fonction pour générer le HTML du bulletin - OPTIMISÉ POUR 1 PAGE A4
   const generateBulletinHTML = (data) => {
     const mention = getMention(data.moyenne_generale);
@@ -215,6 +461,19 @@ const Bulletins = () => {
               <strong>${data.eleve.sexe === 'M' ? 'Masculin' : 'Féminin'}</strong>
             </td>
           </tr>
+          <tr style="background-color: #f9fafb;">
+            <td style="padding: 6px 8px; border: 1px solid #d1d5db;">
+              <span style="color: #6b7280;">Rang: </span>
+              <strong style="font-size: 13px; font-weight: bold;">
+                ${data.rang ? data.rang + '°' : 'N/A'}
+              </strong>
+              ${data.isExaequo ? ' <span style="color: #2563eb; font-size: 10px; font-weight: 600;">(ex-æquo)</span>' : ''}
+            </td>
+            <td style="padding: 6px 8px; border: 1px solid #d1d5db;">
+              <span style="color: #6b7280;">Effectif: </span>
+              <strong>${data.effectif_classe || 'N/A'}</strong>
+            </td>
+          </tr>
         </table>
 
         <!-- Tableau des notes - COMPACT -->
@@ -246,6 +505,13 @@ const Bulletins = () => {
                 <td style="border: 1px solid #d1d5db; padding: 6px; text-align: center; font-size: 15px;">${data.moyenne_generale.toFixed(2)}</td>
                 <td style="border: 1px solid #d1d5db; padding: 6px; text-align: center; font-size: 11px;">${mention.text}</td>
               </tr>
+              ${data.moyenne_annuelle ? `
+              <tr style="background-color: #059669; color: white; font-weight: bold;">
+                <td colspan="2" style="border: 1px solid #d1d5db; padding: 6px 8px; font-size: 11px;">📊 MOYENNE ANNUELLE (${data.nombre_trimestres} trimestres)</td>
+                <td style="border: 1px solid #d1d5db; padding: 6px; text-align: center; font-size: 16px;">${data.moyenne_annuelle.toFixed(2)}</td>
+                <td style="border: 1px solid #d1d5db; padding: 6px; text-align: center; font-size: 11px;">${getMention(data.moyenne_annuelle).text}</td>
+              </tr>
+              ` : ''}
             </tbody>
           </table>
         </div>
@@ -312,12 +578,32 @@ const Bulletins = () => {
     `;
   };
 
-  const filteredEleves = elevesWithMoyennes.filter(eleve => {
-    const matchesSearch = 
-      eleve.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      eleve.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      eleve.matricule.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+  const filteredEleves = elevesWithMoyennes
+    .filter(eleve => {
+      const matchesSearch = 
+        eleve.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        eleve.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        eleve.matricule.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch;
+    })
+    .sort((a, b) => {
+      // Trier par rang (du 1er au dernier)
+      // Les élèves sans rang vont à la fin
+      if (a.rang === null && b.rang === null) return 0;
+      if (a.rang === null) return 1;
+      if (b.rang === null) return -1;
+      return a.rang - b.rang;
+    });
+
+  // Détecter les ex-aequo
+  const elevesWithExaequo = filteredEleves.map((eleve, index, array) => {
+    if (eleve.rang === null) return { ...eleve, isExaequo: false };
+    
+    // Vérifier si d'autres élèves ont le même rang
+    const elevesMemeRang = array.filter(e => e.rang === eleve.rang);
+    const isExaequo = elevesMemeRang.length > 1;
+    
+    return { ...eleve, isExaequo };
   });
 
   const getMention = (moyenne) => {
@@ -421,38 +707,88 @@ const Bulletins = () => {
           )}
         </div>
 
-        {/* Toggle vue + compteur */}
-        {selectedClasse && selectedPeriode && filteredEleves.length > 0 && (
+        {/* Toggle vue + compteur + Téléchargement groupé */}
+        {selectedClasse && selectedPeriode && elevesWithExaequo.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm p-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-900 flex items-center">
                 <Users className="h-5 w-5 mr-2" />
-                {filteredEleves.length} élève(s)
+                {elevesWithExaequo.length} élève(s)
               </h3>
-              <div className="flex space-x-2">
+              <div className="flex items-center space-x-3">
+                {/* Bouton télécharger tous les bulletins */}
                 <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition ${
-                    viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                  onClick={handleDownloadAllBulletinsOptimized}
+                  disabled={isDownloading || elevesWithExaequo.filter(e => e.hasNotes).length === 0}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  title="Télécharger tous les bulletins en un seul PDF"
                 >
-                  <List className="h-5 w-5" />
+                  <Download className="h-4 w-4" />
+                  <span>{isDownloading ? 'Téléchargement...' : 'Tous les bulletins'}</span>
+                  {!isDownloading && elevesWithExaequo.filter(e => e.hasNotes).length > 0 && (
+                    <span className="bg-green-800 text-white text-xs px-2 py-0.5 rounded-full">
+                      {elevesWithExaequo.filter(e => e.hasNotes).length}
+                    </span>
+                  )}
                 </button>
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-lg transition ${
-                    viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <Grid className="h-5 w-5" />
-                </button>
+                
+                {/* Toggle vue */}
+                <div className="flex space-x-2 border-l pl-3">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded-lg transition ${
+                      viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                    title="Vue liste"
+                  >
+                    <List className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded-lg transition ${
+                      viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                    title="Vue grille"
+                  >
+                    <Grid className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </div>
+            
+            {/* Barre de progression pour le téléchargement */}
+            {isDownloading && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    Génération du PDF en cours...
+                  </span>
+                  <span className="text-sm font-bold text-blue-600">
+                    {downloadProgress}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-green-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${downloadProgress}%` }}
+                  >
+                    <div className="h-full w-full animate-pulse bg-white opacity-20"></div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {downloadProgress < 30 && 'Chargement des données...'}
+                  {downloadProgress >= 30 && downloadProgress < 50 && 'Récupération des bulletins...'}
+                  {downloadProgress >= 50 && downloadProgress < 75 && 'Génération du contenu HTML...'}
+                  {downloadProgress >= 75 && downloadProgress < 100 && 'Conversion en PDF...'}
+                  {downloadProgress === 100 && 'Finalisation...'}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* Vue Liste */}
-        {selectedClasse && selectedPeriode && filteredEleves.length > 0 && viewMode === 'list' && (
+        {selectedClasse && selectedPeriode && elevesWithExaequo.length > 0 && viewMode === 'list' && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-base font-semibold text-gray-700">
@@ -461,7 +797,7 @@ const Bulletins = () => {
             </div>
 
             <div className="divide-y divide-gray-200">
-              {filteredEleves.map((eleve) => {
+              {elevesWithExaequo.map((eleve) => {
                 const mention = eleve.moyenneGenerale ? getMention(parseFloat(eleve.moyenneGenerale)) : null;
                 
                 return (
@@ -479,10 +815,33 @@ const Bulletins = () => {
                           </div>
                           
                           <div className="flex items-center space-x-6">
-                            {/* Nombre de notes */}
+                            {/* Rang avec médaille */}
                             <div className="text-center">
-                              <div className="text-sm text-gray-500">Notes</div>
-                              <div className="text-lg font-bold text-gray-900">{eleve.notesCount}</div>
+                              <div className="text-sm text-gray-500">Rang</div>
+                              {eleve.rang ? (
+                                <div className="flex flex-col items-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    {eleve.rang === 1 && <span className="text-2xl">🥇</span>}
+                                    {eleve.rang === 2 && <span className="text-2xl">🥈</span>}
+                                    {eleve.rang === 3 && <span className="text-2xl">🥉</span>}
+                                    <div className={`text-xl font-bold ${
+                                      eleve.rang === 1 ? 'text-yellow-600' :
+                                      eleve.rang === 2 ? 'text-gray-500' :
+                                      eleve.rang === 3 ? 'text-orange-600' :
+                                      'text-purple-600'
+                                    }`}>
+                                      {eleve.rang}°
+                                    </div>
+                                  </div>
+                                  {eleve.isExaequo && (
+                                    <span className="text-xs text-blue-600 font-medium mt-1">
+                                      ex-æquo
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-lg text-gray-400">-</div>
+                              )}
                             </div>
                             
                             {/* Moyenne */}
@@ -540,9 +899,9 @@ const Bulletins = () => {
         )}
 
         {/* Vue Grille */}
-        {selectedClasse && selectedPeriode && filteredEleves.length > 0 && viewMode === 'grid' && (
+        {selectedClasse && selectedPeriode && elevesWithExaequo.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEleves.map((eleve) => {
+            {elevesWithExaequo.map((eleve) => {
               const mention = eleve.moyenneGenerale ? getMention(parseFloat(eleve.moyenneGenerale)) : null;
               
               return (
@@ -579,8 +938,40 @@ const Bulletins = () => {
                       )}
                     </div>
 
-                    {/* Mention et notes */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Rang, Notes et Matières */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className={`rounded-lg p-3 ${
+                        eleve.rang === 1 ? 'bg-yellow-50 border-2 border-yellow-300' :
+                        eleve.rang === 2 ? 'bg-gray-50 border-2 border-gray-300' :
+                        eleve.rang === 3 ? 'bg-orange-50 border-2 border-orange-300' :
+                        'bg-purple-50'
+                      }`}>
+                        <div className="text-xs text-gray-500 mb-1">Rang</div>
+                        {eleve.rang ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="flex items-center justify-center gap-1">
+                              {eleve.rang === 1 && <span className="text-2xl">🥇</span>}
+                              {eleve.rang === 2 && <span className="text-2xl">🥈</span>}
+                              {eleve.rang === 3 && <span className="text-2xl">🥉</span>}
+                              <div className={`text-xl font-bold ${
+                                eleve.rang === 1 ? 'text-yellow-600' :
+                                eleve.rang === 2 ? 'text-gray-600' :
+                                eleve.rang === 3 ? 'text-orange-600' :
+                                'text-purple-600'
+                              }`}>
+                                {eleve.rang}°
+                              </div>
+                            </div>
+                            {eleve.isExaequo && (
+                              <span className="text-xs text-blue-600 font-semibold">
+                                ex-æquo
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-xl font-bold text-gray-400">-</div>
+                        )}
+                      </div>
                       <div className="bg-gray-50 rounded-lg p-3">
                         <div className="text-xs text-gray-500 mb-1">Notes</div>
                         <div className="text-xl font-bold text-gray-900">{eleve.notesCount}</div>
@@ -627,7 +1018,7 @@ const Bulletins = () => {
         )}
 
         {/* Message si aucun élève */}
-        {selectedClasse && selectedPeriode && filteredEleves.length === 0 && !loading && (
+        {selectedClasse && selectedPeriode && elevesWithExaequo.length === 0 && !loading && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-12 text-center">
             <FileText className="h-16 w-16 text-yellow-600 mx-auto mb-4" />
             <p className="text-yellow-800 font-medium">
