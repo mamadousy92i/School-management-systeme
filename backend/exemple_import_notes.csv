@@ -1,0 +1,29 @@
+matricule,matiere,type_evaluation,note,date_evaluation,commentaire
+EL00001,Mathématiques,Devoir,7.75,2024-10-15,Très bon travail
+EL00001,Français,Devoir,7,2024-10-15,Bien
+EL00001,Anglais,Devoir,8.25,2024-10-15,Excellent
+EL00001,Histoire,Devoir,6.5,2024-10-15,Satisfaisant
+EL00002,Mathématiques,Devoir,6,2024-10-15,Peut mieux faire
+EL00002,Français,Devoir,8,2024-10-15,Très bien
+EL00002,Anglais,Devoir,7.25,2024-10-15,Bon travail
+EL00002,Histoire,Devoir,7.5,2024-10-15,Bien
+EL00003,Mathématiques,Devoir,9,2024-10-15,Excellent
+EL00003,Français,Devoir,8.75,2024-10-15,Excellent
+EL00003,Anglais,Devoir,9.5,2024-10-15,Parfait
+EL00003,Histoire,Devoir,8,2024-10-15,Très bon
+EL00004,Mathématiques,Contrôle,6.75,2024-10-20,Moyen
+EL00004,Français,Contrôle,7.5,2024-10-20,Bien
+EL00004,Anglais,Contrôle,6,2024-10-20,À améliorer
+EL00004,Histoire,Contrôle,7,2024-10-20,Correct
+EL00005,Mathématiques,Contrôle,8,2024-10-20,Très bien
+EL00005,Français,Contrôle,7.25,2024-10-20,Bon
+EL00005,Anglais,Contrôle,7.75,2024-10-20,Bien
+EL00005,Histoire,Contrôle,8.5,2024-10-20,Excellent
+EL00006,Mathématiques,Composition,8.5,2024-11-15,Excellent résultat
+EL00006,Français,Composition,8.25,2024-11-15,Très bon
+EL00006,Anglais,Composition,9,2024-11-15,Parfait
+EL00006,Histoire,Composition,7.5,2024-11-15,Bien
+EL00007,Mathématiques,Composition,7,2024-11-15,Correct
+EL00007,Français,Composition,6.75,2024-11-15,Moyen
+EL00007,Anglais,Composition,7.75,2024-11-15,Bon
+EL00007,Histoire,Composition,8,2024-11-15,Très bien
