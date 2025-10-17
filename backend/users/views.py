@@ -49,13 +49,17 @@ def login_view(request):
 @permission_classes([IsAuthenticated])
 def logout_view(request):
     """Vue pour la déconnexion"""
+    # Rendre la déconnexion idempotente: même sans refresh_token, répondre OK
+    refresh_token = request.data.get("refresh_token")
+    if not refresh_token:
+        return Response({"message": "Déconnexion effectuée"}, status=status.HTTP_205_RESET_CONTENT)
     try:
-        refresh_token = request.data["refresh_token"]
         token = RefreshToken(refresh_token)
         token.blacklist()
         return Response({"message": "Déconnexion réussie"}, status=status.HTTP_205_RESET_CONTENT)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        # Si le token est invalide/expiré, considérer la session terminée
+        return Response({"message": "Déconnexion effectuée"}, status=status.HTTP_205_RESET_CONTENT)
 
 
 @api_view(['GET'])

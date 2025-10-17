@@ -34,10 +34,9 @@ class BaseEcoleViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         
         # Si l'utilisateur est authentifié et a une école
-        if self.request.user.is_authenticated:
-            if hasattr(self.request, 'ecole') and self.request.ecole:
-                # Filtrer par école (injectée par le middleware)
-                return queryset.filter(ecole=self.request.ecole)
+        if self.request.user.is_authenticated and hasattr(self.request.user, 'ecole') and self.request.user.ecole:
+            # Filtrer par l'école provenant directement de l'utilisateur (JWT)
+            return queryset.filter(ecole=self.request.user.ecole)
         
         # Si pas d'école, retourner vide (sécurité)
         return queryset.none()
@@ -46,8 +45,8 @@ class BaseEcoleViewSet(viewsets.ModelViewSet):
         """
         Injecte automatiquement l'école lors de la création
         """
-        if hasattr(self.request, 'ecole') and self.request.ecole:
-            serializer.save(ecole=self.request.ecole)
+        if hasattr(self.request.user, 'ecole') and self.request.user.ecole:
+            serializer.save(ecole=self.request.user.ecole)
         else:
             raise ValidationError({
                 'error': 'Vous devez être assigné à une école pour créer cet objet',
@@ -60,8 +59,8 @@ class BaseEcoleViewSet(viewsets.ModelViewSet):
         """
         instance = self.get_object()
         
-        # Vérifier que l'objet appartient à l'école de l'utilisateur
-        if hasattr(instance, 'ecole') and instance.ecole != self.request.ecole:
+        # Vérifier que l'objet appartient à l'école de l'utilisateur (JWT)
+        if hasattr(instance, 'ecole') and (not hasattr(self.request.user, 'ecole') or not self.request.user.ecole or instance.ecole != self.request.user.ecole):
             raise ValidationError({
                 'error': 'Vous ne pouvez pas modifier un objet d\'une autre école',
                 'code': 'FORBIDDEN_CROSS_TENANT'

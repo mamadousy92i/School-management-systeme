@@ -273,8 +273,23 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
         # Vérifier les permissions
         user = request.user
         if user.is_professeur() and not user.is_admin():
+            # Un professeur peut voir si c'est sa classe principale OU s'il enseigne dans la classe
             prof = Professeur.objects.get(user=user)
-            if eleve.classe.professeur_principal != prof:
+            # Protéger le cas où l'élève n'a pas de classe
+            if not getattr(eleve, 'classe', None):
+                return Response(
+                    {'error': "L'élève n'est rattaché à aucune classe"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            enseigne_dans_classe = False
+            try:
+                from academic.models import MatiereClasse
+                enseigne_dans_classe = MatiereClasse.objects.filter(
+                    classe=eleve.classe, professeur=prof
+                ).exists()
+            except Exception:
+                enseigne_dans_classe = False
+            if (eleve.classe.professeur_principal != prof) and (not enseigne_dans_classe):
                 return Response(
                     {'error': 'Non autorisé'},
                     status=status.HTTP_403_FORBIDDEN
@@ -313,17 +328,15 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
         # Calculer la moyenne de classe
         moyenne_classe = round(sum(moyennes_classe) / len(moyennes_classe), 2) if moyennes_classe else None
         
-        # Récupérer les informations de l'école via l'utilisateur
+        # Récupérer les informations de l'école via l'utilisateur (protéger champs optionnels)
         ecole_info = None
-        if request.user.ecole:
+        if getattr(request.user, 'ecole', None):
+            ecole = request.user.ecole
             ecole_info = {
-                'nom': request.user.ecole.nom,
-                'sigle': request.user.ecole.sigle,
-                'adresse': request.user.ecole.adresse,
-                'telephone': request.user.ecole.telephone,
-                'email': request.user.ecole.email,
-                'devise': request.user.ecole.devise,
-                'directeur': request.user.ecole.directeur
+                'nom': getattr(ecole, 'nom', None),
+                'adresse': getattr(ecole, 'adresse', None),
+                'telephone': getattr(ecole, 'telephone', None),
+                'email': getattr(ecole, 'email', None),
             }
         
         # Calculer la moyenne annuelle si c'est le 3ème trimestre
@@ -387,11 +400,19 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Vérifier les permissions
+        # Vérifier les permissions (prof titulaire OU prof qui enseigne dans la classe)
         user = request.user
         if user.is_professeur() and not user.is_admin():
             prof = Professeur.objects.get(user=user)
-            if classe.professeur_principal != prof:
+            enseigne_dans_classe = False
+            try:
+                from academic.models import MatiereClasse
+                enseigne_dans_classe = MatiereClasse.objects.filter(
+                    classe=classe, professeur=prof
+                ).exists()
+            except Exception:
+                enseigne_dans_classe = False
+            if (classe.professeur_principal != prof) and (not enseigne_dans_classe):
                 return Response(
                     {'error': 'Non autorisé'},
                     status=status.HTTP_403_FORBIDDEN
