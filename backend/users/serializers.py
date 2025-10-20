@@ -67,59 +67,6 @@ class ProfesseurSerializer(serializers.ModelSerializer):
                   'diplome', 'date_embauche']
 
 
-class RegisterSerializer(serializers.ModelSerializer):
-    """Serializer pour l'inscription"""
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
-    password2 = serializers.CharField(write_only=True, required=True)
-    
-    # Champs supplémentaires pour professeur
-    matricule = serializers.CharField(required=False, allow_blank=True)
-    specialite = serializers.CharField(required=False, allow_blank=True)
-    
-    class Meta:
-        model = User
-        fields = ['username', 'password', 'password2', 'email', 'first_name', 
-                  'last_name', 'role', 'telephone', 'date_naissance', 'adresse',
-                  'matricule', 'specialite']
-    
-    def validate(self, attrs):
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Les mots de passe ne correspondent pas."})
-        return attrs
-    
-    def create(self, validated_data):
-        # Extraire les champs supplémentaires
-        matricule = validated_data.pop('matricule', None)
-        specialite = validated_data.pop('specialite', None)
-        validated_data.pop('password2')
-        
-        # Créer l'utilisateur
-        user = User.objects.create(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            role=validated_data.get('role', 'professeur'),
-            telephone=validated_data.get('telephone', ''),
-            date_naissance=validated_data.get('date_naissance', None),
-            adresse=validated_data.get('adresse', '')
-        )
-        user.set_password(validated_data['password'])
-        user.save()
-        
-        # Créer le profil correspondant
-        if user.role == 'admin':
-            Admin.objects.create(user=user)
-        elif user.role == 'professeur':
-            Professeur.objects.create(
-                user=user,
-                matricule=matricule or f'PROF{user.id:04d}',
-                specialite=specialite or ''
-            )
-        
-        return user
-
-
 class LoginSerializer(serializers.Serializer):
     """Serializer pour la connexion"""
     username = serializers.CharField()
