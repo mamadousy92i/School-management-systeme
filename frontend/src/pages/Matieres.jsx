@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { matiereService } from '../services/api';
 import { Plus, Edit2, Trash2, BookOpen, X } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Matieres = () => {
+  const toast = useToast();
   const [matieres, setMatieres] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -43,7 +45,7 @@ const Matieres = () => {
       closeModal();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde de la matière');
+      toast.error('Erreur lors de la sauvegarde de la matière');
     }
   };
 
@@ -54,7 +56,7 @@ const Matieres = () => {
         loadData();
       } catch (error) {
         console.error('Erreur lors de la suppression:', error);
-        alert('Erreur lors de la suppression de la matière');
+        toast.error('Erreur lors de la suppression de la matière');
       }
     }
   };

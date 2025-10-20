@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
 from academic.models import Eleve, Matiere, AnneeScolaire
 from users.models import Professeur
 
@@ -64,7 +65,7 @@ class Note(models.Model):
     valeur = models.DecimalField(
         max_digits=4,
         decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(10)],
+        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('10'))],
         help_text="Note sur 10 (école primaire)"
     )
     

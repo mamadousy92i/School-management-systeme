@@ -15,10 +15,20 @@ import {
 import { 
   Grid, List, Search, Filter, Eye, TrendingUp, User, Upload, Download, X, AlertCircle, CheckCircle 
 } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Notes = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
+  
+  // Bloquer l'accès aux administrateurs
+  useEffect(() => {
+    if (isAdmin()) {
+      toast.info("La saisie de notes est réservée aux enseignants. Les administrateurs peuvent consulter les notes dans le panneau d'administration Django.");
+      navigate('/dashboard');
+    }
+  }, [isAdmin, navigate]);
   
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list'); // 'list' ou 'grid'

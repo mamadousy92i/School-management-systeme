@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { classeService, anneeScolaireService } from '../services/api';
 import { Plus, Edit2, Trash2, Users, Search, X } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Classes = () => {
+  const toast = useToast();
   const [classes, setClasses] = useState([]);
   const [anneeScolaire, setAnneeScolaire] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -12,21 +14,26 @@ const Classes = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [formData, setFormData] = useState({
-    nom: '',
-    niveau: '6eme',
+    niveau: 'ci',
+    section: '',
     effectif_max: 40,
     annee_scolaire_id: '',
   });
 
   const niveaux = [
-    { value: '6eme', label: '6ème' },
-    { value: '5eme', label: '5ème' },
-    { value: '4eme', label: '4ème' },
-    { value: '3eme', label: '3ème' },
-    { value: '2nde', label: '2nde' },
-    { value: '1ere', label: '1ère' },
-    { value: 'tle', label: 'Terminale' },
+    { value: 'ci', label: 'CI - Cours d\'Initiation' },
+    { value: 'cp', label: 'CP - Cours Préparatoire' },
+    { value: 'ce1', label: 'CE1 - Cours Élémentaire 1' },
+    { value: 'ce2', label: 'CE2 - Cours Élémentaire 2' },
+    { value: 'cm1', label: 'CM1 - Cours Moyen 1' },
+    { value: 'cm2', label: 'CM2 - Cours Moyen 2' },
   ];
+
+  // Générer le nom de la classe à partir du niveau et de la section
+  const getGeneratedClassName = () => {
+    const niveauLabel = niveaux.find(n => n.value === formData.niveau)?.label.split(' - ')[0] || '';
+    return formData.section ? `${niveauLabel}-${formData.section}` : niveauLabel;
+  };
 
   useEffect(() => {
     loadData();
@@ -61,7 +68,7 @@ const Classes = () => {
       closeModal();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde de la classe');
+      toast.error('Erreur lors de la sauvegarde de la classe');
     }
   };
 
@@ -72,7 +79,7 @@ const Classes = () => {
         loadData();
       } catch (error) {
         console.error('Erreur lors de la suppression:', error);
-        alert('Erreur lors de la suppression de la classe');
+        toast.error('Erreur lors de la suppression de la classe');
       }
     }
   };
@@ -80,8 +87,8 @@ const Classes = () => {
   const openEditModal = (classe) => {
     setEditingClasse(classe);
     setFormData({
-      nom: classe.nom,
       niveau: classe.niveau,
+      section: classe.section || '',
       effectif_max: classe.effectif_max,
       annee_scolaire_id: classe.annee_scolaire.id,
     });
@@ -92,8 +99,8 @@ const Classes = () => {
     setShowModal(false);
     setEditingClasse(null);
     setFormData({
-      nom: '',
-      niveau: '6eme',
+      niveau: 'ci',
+      section: '',
       effectif_max: 40,
       annee_scolaire_id: anneeScolaire?.id || '',
     });
@@ -246,21 +253,7 @@ const Classes = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nom de la classe
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.nom}
-                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: 6ème A"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Niveau
+                  Niveau <span className="text-red-500">*</span>
                 </label>
                 <select
                   required
@@ -274,6 +267,29 @@ const Classes = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Section (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={formData.section}
+                  onChange={(e) => setFormData({ ...formData, section: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="A, B, C..."
+                  maxLength="10"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Laissez vide si une seule classe par niveau
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Nom généré :</strong> <span className="font-mono font-bold">{getGeneratedClassName()}</span>
+                </p>
               </div>
 
               <div>

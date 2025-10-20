@@ -39,12 +39,17 @@ class TypeEvaluationAdmin(admin.ModelAdmin):
 
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
+    """
+    Admin en LECTURE SEULE pour les notes.
+    Les notes ne peuvent être saisies/modifiées QUE par les professeurs via l'interface web.
+    Les admins peuvent uniquement consulter les notes pour vérification.
+    """
     list_display = ['eleve', 'matiere', 'periode', 'type_evaluation', 'valeur', 'date_evaluation', 'professeur', 'created_at']
     list_filter = ['periode', 'matiere', 'type_evaluation', 'date_evaluation']
     search_fields = ['eleve__nom', 'eleve__prenom', 'eleve__matricule', 'matiere__nom']
-    raw_id_fields = ['eleve', 'matiere', 'periode', 'type_evaluation', 'professeur']
     date_hierarchy = 'date_evaluation'
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['eleve', 'matiere', 'periode', 'type_evaluation', 'valeur', 'date_evaluation', 'professeur', 'commentaire', 'created_at', 'updated_at']
+    
     fieldsets = (
         ('Élève et Matière', {
             'fields': ('eleve', 'matiere')
@@ -55,8 +60,8 @@ class NoteAdmin(admin.ModelAdmin):
         ('Enseignant', {
             'fields': ('professeur',)
         }),
-        ('Observations', {
-            'fields': ('appreciation',),
+        ('Commentaire', {
+            'fields': ('commentaire',),
             'classes': ('collapse',)
         }),
         ('Historique', {
@@ -64,6 +69,18 @@ class NoteAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def has_add_permission(self, request):
+        """Interdire l'ajout de notes via l'admin"""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Interdire la modification de notes via l'admin"""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Interdire la suppression de notes via l'admin"""
+        return False
 
 
 @admin.register(MoyenneEleve)

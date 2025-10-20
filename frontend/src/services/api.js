@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -90,13 +90,18 @@ export const authService = {
     const response = await api.get('/auth/profile/');
     return response.data;
   },
+
+  changePassword: async ({ old_password, new_password }) => {
+    const response = await api.post('/auth/change_password/', { old_password, new_password });
+    return response.data;
+  },
 };
 
 // Services utilisateurs
 export const userService = {
   getAll: async () => {
     const response = await api.get('/users/');
-    return response.data;
+    return response.data.results || response.data;
   },
 
   getById: async (id) => {
@@ -106,6 +111,11 @@ export const userService = {
 
   update: async (id, userData) => {
     const response = await api.put(`/users/${id}/`, userData);
+    return response.data;
+  },
+
+  patch: async (id, userData) => {
+    const response = await api.patch(`/users/${id}/`, userData);
     return response.data;
   },
 
@@ -124,7 +134,7 @@ export const userService = {
 export const professeurService = {
   getAll: async () => {
     const response = await api.get('/professeurs/');
-    return response.data;
+    return response.data.results || response.data;
   },
 
   getById: async (id) => {
@@ -157,7 +167,7 @@ export const professeurService = {
 export const anneeScolaireService = {
   getAll: async () => {
     const response = await api.get('/academic/annees-scolaires/');
-    return response.data;
+    return response.data.results || response.data;
   },
 
   getActive: async () => {
@@ -184,7 +194,8 @@ export const anneeScolaireService = {
 export const classeService = {
   getAll: async (params = {}) => {
     const response = await api.get('/academic/classes/', { params });
-    return response.data;
+    // Gérer le format paginé de Django REST Framework
+    return response.data.results || response.data;
   },
 
   getById: async (id) => {
@@ -221,7 +232,7 @@ export const classeService = {
 export const matiereService = {
   getAll: async () => {
     const response = await api.get('/academic/matieres/');
-    return response.data;
+    return response.data.results || response.data;
   },
 
   getById: async (id) => {
@@ -248,7 +259,8 @@ export const matiereService = {
 export const eleveService = {
   getAll: async (params = {}) => {
     const response = await api.get('/academic/eleves/', { params });
-    return response.data;
+    // Gérer le format paginé de Django REST Framework
+    return response.data.results || response.data;
   },
 
   getById: async (id) => {
@@ -286,13 +298,34 @@ export const eleveService = {
     });
     return response.data;
   },
+
+  getTemplateExcel: async () => {
+    const response = await api.get('/academic/eleves/template_excel/', {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  proposerPassage: async (eleveId, statut) => {
+    const response = await api.patch(`/academic/eleves/${eleveId}/proposer_passage/`, { statut });
+    return response.data;
+  },
+
+  passageClasse: async (eleves, nouvelleClasse, statut = 'actif') => {
+    const response = await api.post('/academic/eleves/passage_classe/', {
+      eleves,
+      nouvelle_classe: nouvelleClasse,
+      statut
+    });
+    return response.data;
+  },
 };
 
 // Services de gestion des notes (Module 3)
 export const periodeService = {
   getAll: async () => {
     const response = await api.get('/grades/periodes/');
-    return response.data;
+    return response.data.results || response.data;
   },
 
   getActive: async () => {
@@ -309,14 +342,14 @@ export const periodeService = {
 export const typeEvaluationService = {
   getAll: async () => {
     const response = await api.get('/grades/types-evaluation/');
-    return response.data;
+    return response.data.results || response.data;
   },
 };
 
 export const noteService = {
   getAll: async (params = {}) => {
     const response = await api.get('/grades/notes/', { params });
-    return response.data;
+    return response.data.results || response.data;
   },
 
   getById: async (id) => {
@@ -348,7 +381,7 @@ export const noteService = {
 export const moyenneService = {
   getAll: async (params = {}) => {
     const response = await api.get('/grades/moyennes/', { params });
-    return response.data;
+    return response.data.results || response.data;
   },
 
   getMoyenneGenerale: async (eleveId, periodeId) => {
@@ -360,6 +393,13 @@ export const moyenneService = {
 
   getClasseMoyennes: async (params = {}) => {
     const response = await api.get('/grades/moyennes/classe_moyennes/', { params });
+    return response.data;
+  },
+
+  getBulletinsClasse: async (classeId, periodeId) => {
+    const response = await api.get('/grades/moyennes/bulletins_classe/', {
+      params: { classe: classeId, periode: periodeId }
+    });
     return response.data;
   },
 

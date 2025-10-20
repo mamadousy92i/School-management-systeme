@@ -1,18 +1,22 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import User, Admin, Professeur
+from django.contrib.auth.password_validation import validate_password
 
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer pour le modèle User"""
     password = serializers.CharField(write_only=True, required=False)
+    ecole_nom = serializers.CharField(source='ecole.nom', read_only=True)
+    ecole_code = serializers.CharField(source='ecole.code', read_only=True)
     
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 
                   'role', 'telephone', 'photo', 'date_naissance', 'adresse',
-                  'password', 'is_active', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+                  'password', 'is_active', 'created_at', 'updated_at',
+                  'ecole', 'ecole_nom', 'ecole_code']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'ecole_nom', 'ecole_code']
     
     def create(self, validated_data):
         password = validated_data.pop('password', None)
@@ -27,6 +31,8 @@ class UserSerializer(serializers.ModelSerializer):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         if password:
+            # Validate new password strength
+            validate_password(password, instance)
             instance.set_password(password)
         instance.save()
         return instance

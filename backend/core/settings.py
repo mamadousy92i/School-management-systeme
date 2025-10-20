@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@kxo6ombxxh!a2)-1=knputk=j1fnxy+$cs2)p2_5t!9p1oehx'
+SECRET_KEY = config('SECRET_KEY', default='dev-secret-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', cast=bool, default=True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [h for h in config('ALLOWED_HOSTS', default='').split(',') if h]
 
 
 # Application definition
@@ -37,12 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    
+    'drf_spectacular',
     # Local apps
     'users',
     'academic',
@@ -58,6 +58,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.TenantMiddleware',  # Multi-tenant : Injecte l'école
+    'core.middleware.TenantSecurityMiddleware',  # Multi-tenant : Sécurité
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -138,13 +140,14 @@ AUTH_USER_MODEL = 'users.User'
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'users.authentication.CustomJWTAuthentication',  # Custom JWT avec chargement de l'école
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    'PAGE_SIZE': 1000,  # Limite haute pour éviter les problèmes de pagination
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # Simple JWT Configuration
@@ -174,8 +177,10 @@ SIMPLE_JWT = {
 
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite dev server
-    "http://localhost:3000",  # Alternative port
+    origin for origin in config(
+        'CORS_ALLOWED_ORIGINS',
+        default='http://localhost:5173,http://localhost:3000'
+    ).split(',') if origin
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -184,3 +189,10 @@ CORS_ALLOW_CREDENTIALS = True
 import os
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# drf-spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'School Management API',
+    'DESCRIPTION': 'API du système de gestion scolaire (multi-tenant)',
+    'VERSION': '1.0.0',
+}

@@ -23,6 +23,10 @@ class PeriodeViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Periode.objects.all()
+        # Filtrer par école de l'utilisateur
+        user = getattr(self.request, 'user', None)
+        if getattr(user, 'is_authenticated', False) and getattr(user, 'ecole', None):
+            queryset = queryset.filter(annee_scolaire__ecole=user.ecole)
         
         # Filtrer par année scolaire si spécifié
         annee_id = self.request.query_params.get('annee_scolaire')
@@ -58,24 +62,36 @@ class TypeEvaluationViewSet(viewsets.ModelViewSet):
 class NoteViewSet(viewsets.ModelViewSet):
     """
     ViewSet pour les notes
-    - Enseignant : Peut saisir/modifier des notes pour SES élèves uniquement
-    - Admin : Peut tout voir et tout modifier
+    - Enseignant : Peut saisir/modifier/supprimer des notes pour SES élèves uniquement
+    - Admin : Peut UNIQUEMENT CONSULTER les notes (lecture seule)
     """
     serializer_class = NoteSerializer
     permission_classes = [IsTeacherOrAdmin]
     
     def get_permissions(self):
         """Permissions dynamiques selon l'action"""
-        if self.action in ['destroy']:
-            # Seul l'admin peut supprimer des notes
-            permission_classes = [IsAdminUser]
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'saisie_rapide']:
+            # SEULS les professeurs peuvent créer/modifier/supprimer des notes
+            from users.permissions import IsTeacherOnly
+            permission_classes = [IsTeacherOnly]
         else:
+            # Liste et détails : enseignants et admins
             permission_classes = [IsTeacherOrAdmin]
         return [permission() for permission in permission_classes]
     
     def get_queryset(self):
         user = self.request.user
         queryset = Note.objects.all()
+        
+        # Cloisonnement par école
+        if getattr(user, 'is_authenticated', False) and getattr(user, 'ecole', None):
+            queryset = queryset.filter(
+                eleve__ecole=user.ecole,
+                matiere__ecole=user.ecole,
+                periode__annee_scolaire__ecole=user.ecole,
+            )
+        else:
+            return Note.objects.none()
         
         # Filtres communs
         eleve_id = self.request.query_params.get('eleve')
@@ -111,37 +127,33 @@ class NoteViewSet(viewsets.ModelViewSet):
         """Ajouter automatiquement le professeur lors de la création"""
         user = self.request.user
         
-        # Vérifier que l'enseignant a le droit de saisir pour cet élève
-        if user.is_professeur() and not user.is_admin():
-            eleve = serializer.validated_data.get('eleve')
-            try:
-                prof = Professeur.objects.get(user=user)
-                if eleve.classe.professeur_principal != prof:
-                    raise serializers.ValidationError(
-                        "Vous ne pouvez saisir des notes que pour les élèves de votre classe"
-                    )
-            except Professeur.DoesNotExist:
-                raise serializers.ValidationError("Profil enseignant introuvable")
-        
-        serializer.save()
+        # Seul un professeur peut créer une note (déjà vérifié par IsTeacherOnly)
+        eleve = serializer.validated_data.get('eleve')
+        try:
+            prof = Professeur.objects.get(user=user)
+            if eleve.classe.professeur_principal != prof:
+                raise serializers.ValidationError(
+                    "Vous ne pouvez saisir des notes que pour les élèves de votre classe"
+                )
+            serializer.save(professeur=prof)
+        except Professeur.DoesNotExist:
+            raise serializers.ValidationError("Profil enseignant introuvable")
     
     def perform_update(self, serializer):
         """Vérifier les permissions avant mise à jour"""
         user = self.request.user
         instance = self.get_object()
         
-        # Vérifier que l'enseignant modifie ses propres notes
-        if user.is_professeur() and not user.is_admin():
-            try:
-                prof = Professeur.objects.get(user=user)
-                if instance.eleve.classe.professeur_principal != prof:
-                    raise serializers.ValidationError(
-                        "Vous ne pouvez modifier que les notes de votre classe"
-                    )
-            except Professeur.DoesNotExist:
-                raise serializers.ValidationError("Profil enseignant introuvable")
-        
-        serializer.save()
+        # Seul un professeur peut modifier (déjà vérifié par IsTeacherOnly)
+        try:
+            prof = Professeur.objects.get(user=user)
+            if instance.eleve.classe.professeur_principal != prof:
+                raise serializers.ValidationError(
+                    "Vous ne pouvez modifier que les notes de votre classe"
+                )
+            serializer.save()
+        except Professeur.DoesNotExist:
+            raise serializers.ValidationError("Profil enseignant introuvable")
     
     @action(detail=False, methods=['post'])
     def saisie_rapide(self, request):
@@ -160,11 +172,8 @@ class NoteViewSet(viewsets.ModelViewSet):
         type_eval = TypeEvaluation.objects.get(id=data['type_evaluation_id'])
         date_eval = data['date_evaluation']
         
-        # Vérifier les permissions pour l'enseignant
-        if user.is_professeur() and not user.is_admin():
-            prof = Professeur.objects.get(user=user)
-        else:
-            prof = None
+        # Récupérer le profil professeur (seuls les profs peuvent utiliser cette action)
+        prof = Professeur.objects.get(user=user)
         
         created_notes = []
         errors = []
@@ -174,7 +183,7 @@ class NoteViewSet(viewsets.ModelViewSet):
                 eleve = Eleve.objects.get(id=note_data['eleve_id'])
                 
                 # Vérifier que l'enseignant a le droit
-                if prof and eleve.classe.professeur_principal != prof:
+                if eleve.classe.professeur_principal != prof:
                     errors.append(f"Élève {eleve.nom_complet}: pas autorisé")
                     continue
                 
@@ -187,7 +196,7 @@ class NoteViewSet(viewsets.ModelViewSet):
                     defaults={
                         'valeur': note_data['valeur'],
                         'date_evaluation': date_eval,
-                        'professeur': prof if prof else request.user.professeur_profile if hasattr(request.user, 'professeur_profile') else None,
+                        'professeur': prof,
                         'commentaire': note_data.get('commentaire', '')
                     }
                 )
@@ -225,6 +234,7 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = MoyenneEleveSerializer
     permission_classes = [IsTeacherOrAdmin]
+    pagination_class = None  # Désactiver la pagination pour toutes les actions
     
     def get_queryset(self):
         user = self.request.user
@@ -274,11 +284,33 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # Vérifier cloisonnement par école
+        if not getattr(request.user, 'ecole', None) or (
+            getattr(eleve, 'ecole', None) != request.user.ecole or
+            getattr(periode.annee_scolaire, 'ecole', None) != request.user.ecole
+        ):
+            return Response({'error': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
+        
         # Vérifier les permissions
         user = request.user
         if user.is_professeur() and not user.is_admin():
+            # Un professeur peut voir si c'est sa classe principale OU s'il enseigne dans la classe
             prof = Professeur.objects.get(user=user)
-            if eleve.classe.professeur_principal != prof:
+            # Protéger le cas où l'élève n'a pas de classe
+            if not getattr(eleve, 'classe', None):
+                return Response(
+                    {'error': "L'élève n'est rattaché à aucune classe"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            enseigne_dans_classe = False
+            try:
+                from academic.models import MatiereClasse
+                enseigne_dans_classe = MatiereClasse.objects.filter(
+                    classe=eleve.classe, professeur=prof
+                ).exists()
+            except Exception:
+                enseigne_dans_classe = False
+            if (eleve.classe.professeur_principal != prof) and (not enseigne_dans_classe):
                 return Response(
                     {'error': 'Non autorisé'},
                     status=status.HTTP_403_FORBIDDEN
@@ -317,26 +349,46 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
         # Calculer la moyenne de classe
         moyenne_classe = round(sum(moyennes_classe) / len(moyennes_classe), 2) if moyennes_classe else None
         
-        # Récupérer les informations de l'école via l'utilisateur
+        # Récupérer les informations de l'école via l'utilisateur (protéger champs optionnels)
         ecole_info = None
-        if request.user.ecole:
+        if getattr(request.user, 'ecole', None):
+            ecole = request.user.ecole
             ecole_info = {
-                'nom': request.user.ecole.nom,
-                'sigle': request.user.ecole.sigle,
-                'adresse': request.user.ecole.adresse,
-                'telephone': request.user.ecole.telephone,
-                'email': request.user.ecole.email,
-                'devise': request.user.ecole.devise,
-                'directeur': request.user.ecole.directeur
+                'nom': getattr(ecole, 'nom', None),
+                'adresse': getattr(ecole, 'adresse', None),
+                'telephone': getattr(ecole, 'telephone', None),
+                'email': getattr(ecole, 'email', None),
             }
+        
+        # Calculer la moyenne annuelle si c'est le 3ème trimestre
+        moyenne_annuelle = None
+        nombre_trimestres = 0
+        
+        if periode.nom == 'trimestre3':
+            periodes_annee = Periode.objects.filter(
+                annee_scolaire=periode.annee_scolaire
+            ).order_by('nom')
+            
+            moyennes_trimestres = []
+            for p in periodes_annee:
+                moy = MoyenneEleve.calculer_moyenne_generale(eleve, p)
+                if moy is not None:
+                    moyennes_trimestres.append(moy)
+            
+            if moyennes_trimestres:
+                moyenne_annuelle = sum(moyennes_trimestres) / len(moyennes_trimestres)
+                nombre_trimestres = len(moyennes_trimestres)
         
         data = {
             'eleve_id': eleve.id,
             'eleve_nom': eleve.nom_complet,
             'periode_id': periode.id,
             'periode_nom': periode.get_nom_display(),
+            'periode_code': periode.nom,
             'annee_scolaire': periode.annee_scolaire.libelle,
             'moyenne_generale': moyenne_gen,
+            'moyenne_annuelle': moyenne_annuelle,
+            'nombre_trimestres': nombre_trimestres,
             'nombre_matieres': moyennes.count(),
             'moyennes_par_matiere': MoyenneEleveSerializer(moyennes, many=True).data,
             'rang': rang,
@@ -369,11 +421,26 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Vérifier les permissions
+        # Vérifier cloisonnement par école
+        if not getattr(request.user, 'ecole', None) or (
+            getattr(classe, 'ecole', None) != request.user.ecole or
+            getattr(periode.annee_scolaire, 'ecole', None) != request.user.ecole
+        ):
+            return Response({'error': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Vérifier les permissions (prof titulaire OU prof qui enseigne dans la classe)
         user = request.user
         if user.is_professeur() and not user.is_admin():
             prof = Professeur.objects.get(user=user)
-            if classe.professeur_principal != prof:
+            enseigne_dans_classe = False
+            try:
+                from academic.models import MatiereClasse
+                enseigne_dans_classe = MatiereClasse.objects.filter(
+                    classe=classe, professeur=prof
+                ).exists()
+            except Exception:
+                enseigne_dans_classe = False
+            if (classe.professeur_principal != prof) and (not enseigne_dans_classe):
                 return Response(
                     {'error': 'Non autorisé'},
                     status=status.HTTP_403_FORBIDDEN
@@ -409,12 +476,162 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 'has_notes': notes_count > 0
             })
         
+        # Calculer les rangs avec gestion des ex-aequo
+        # Trier par moyenne décroissante
+        resultats_tries = sorted(
+            resultats, 
+            key=lambda x: x['moyenne_generale'] if x['moyenne_generale'] is not None else -1,
+            reverse=True
+        )
+        
+        # Attribuer les rangs de manière plus simple et correcte
+        rang_actuel = 0
+        moyenne_precedente = None
+        
+        for i, eleve in enumerate(resultats_tries):
+            if eleve['moyenne_generale'] is None:
+                eleve['rang'] = None
+            else:
+                # Si la moyenne est différente de la précédente, nouveau rang = position + 1
+                if i == 0 or eleve['moyenne_generale'] != moyenne_precedente:
+                    rang_actuel = i + 1  # Le rang = position dans le classement (1-indexed)
+                
+                eleve['rang'] = rang_actuel
+                moyenne_precedente = eleve['moyenne_generale']
+        
         return Response({
             'classe_id': classe.id,
             'classe_nom': classe.nom,
             'periode_id': periode.id,
             'periode_nom': periode.get_nom_display(),
-            'eleves': resultats
+            'effectif_classe': eleves.count(),  # Nombre total d'élèves dans la classe
+            'eleves': resultats_tries  # Retourner la liste triée avec rangs
+        })
+    
+    @action(detail=False, methods=['get'])
+    def bulletins_classe(self, request):
+        """Obtenir toutes les données nécessaires pour les bulletins d'une classe (optimisé)"""
+        classe_id = request.query_params.get('classe')
+        periode_id = request.query_params.get('periode')
+        
+        if not classe_id or not periode_id:
+            return Response(
+                {'error': 'Paramètres classe et periode requis'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from academic.models import Classe
+            classe = Classe.objects.get(id=classe_id)
+            periode = Periode.objects.get(id=periode_id)
+        except (Classe.DoesNotExist, Periode.DoesNotExist):
+            return Response(
+                {'error': 'Classe ou période introuvable'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Vérifier cloisonnement par école
+        if not getattr(request.user, 'ecole', None) or (
+            getattr(classe, 'ecole', None) != request.user.ecole or
+            getattr(periode.annee_scolaire, 'ecole', None) != request.user.ecole
+        ):
+            return Response({'error': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Vérifier les permissions
+        user = request.user
+        if user.is_professeur() and not user.is_admin():
+            prof = Professeur.objects.get(user=user)
+            if classe.professeur_principal != prof:
+                return Response(
+                    {'error': 'Non autorisé'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Récupérer tous les élèves avec notes
+        eleves = Eleve.objects.filter(classe=classe, statut='actif')
+        
+        bulletins_data = []
+        for eleve in eleves:
+            notes_count = Note.objects.filter(eleve=eleve, periode=periode).count()
+            if notes_count == 0:
+                continue
+            
+            # Calculer la moyenne générale
+            moyenne_gen = MoyenneEleve.calculer_moyenne_generale(eleve, periode)
+            if moyenne_gen is None:
+                continue
+            
+            # Récupérer les moyennes par matière
+            moyennes = MoyenneEleve.objects.filter(
+                eleve=eleve,
+                periode=periode
+            ).select_related('matiere')
+            
+            bulletins_data.append({
+                'eleve': {
+                    'id': eleve.id,
+                    'matricule': eleve.matricule,
+                    'nom': eleve.nom,
+                    'prenom': eleve.prenom,
+                    'sexe': eleve.sexe,
+                    'classe_nom': classe.nom
+                },
+                'moyenne_generale': moyenne_gen,
+                'moyennes_par_matiere': MoyenneEleveSerializer(moyennes, many=True).data
+            })
+        
+        # Calculer les rangs
+        bulletins_data.sort(key=lambda x: x['moyenne_generale'], reverse=True)
+        rang_actuel = 0
+        moyenne_precedente = None
+        
+        for i, bulletin in enumerate(bulletins_data):
+            if i == 0 or bulletin['moyenne_generale'] != moyenne_precedente:
+                rang_actuel = i + 1
+            bulletin['rang'] = rang_actuel
+            moyenne_precedente = bulletin['moyenne_generale']
+        
+        # Détecter les ex-aequo
+        rangs_count = {}
+        for bulletin in bulletins_data:
+            rang = bulletin['rang']
+            rangs_count[rang] = rangs_count.get(rang, 0) + 1
+        
+        for bulletin in bulletins_data:
+            bulletin['isExaequo'] = rangs_count[bulletin['rang']] > 1
+            bulletin['effectif_classe'] = len(bulletins_data)
+            
+            # Si c'est le 3ème trimestre, calculer la moyenne annuelle
+            if periode.nom == 'trimestre3':
+                eleve_id = bulletin['eleve']['id']
+                eleve_obj = Eleve.objects.get(id=eleve_id)
+                
+                # Récupérer toutes les périodes de l'année scolaire
+                periodes_annee = Periode.objects.filter(
+                    annee_scolaire=periode.annee_scolaire
+                ).order_by('nom')
+                
+                moyennes_trimestres = []
+                for p in periodes_annee:
+                    moy = MoyenneEleve.calculer_moyenne_generale(eleve_obj, p)
+                    if moy is not None:
+                        moyennes_trimestres.append(moy)
+                
+                if moyennes_trimestres:
+                    bulletin['moyenne_annuelle'] = sum(moyennes_trimestres) / len(moyennes_trimestres)
+                    bulletin['nombre_trimestres'] = len(moyennes_trimestres)
+                else:
+                    bulletin['moyenne_annuelle'] = None
+                    bulletin['nombre_trimestres'] = 0
+            else:
+                bulletin['moyenne_annuelle'] = None
+                bulletin['nombre_trimestres'] = 0
+        
+        return Response({
+            'classe_nom': classe.nom,
+            'periode_nom': periode.get_nom_display(),
+            'periode_code': periode.nom,  # Pour détecter le trimestre
+            'bulletins': bulletins_data
         })
     
     @action(detail=False, methods=['post'])
@@ -440,6 +657,10 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'Période introuvable'},
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+        # Vérifier cloisonnement par école
+        if not getattr(request.user, 'ecole', None) or getattr(periode.annee_scolaire, 'ecole', None) != request.user.ecole:
+            return Response({'error': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
         
         # Recalculer toutes les moyennes pour cette période
         notes = Note.objects.filter(periode=periode).values('eleve', 'matiere').distinct()
