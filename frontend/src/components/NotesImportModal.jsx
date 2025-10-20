@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 import { noteService } from '../services/api';
 
 const NotesImportModal = ({ 
@@ -11,6 +12,7 @@ const NotesImportModal = ({
   typesEval,
   onImportSuccess 
 }) => {
+  const toast = useToast();
   const [file, setFile] = useState(null);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
@@ -21,7 +23,7 @@ const NotesImportModal = ({
       setFile(selectedFile);
       setResult(null);
     } else {
-      alert('Veuillez sélectionner un fichier CSV');
+      toast.error('Veuillez sélectionner un fichier CSV');
     }
   };
 
@@ -60,7 +62,7 @@ EL00003,Anglais,Composition,9,2024-10-17,Excellent`;
 
   const handleImport = async () => {
     if (!file || !selectedPeriode || !selectedClasse) {
-      alert('Veuillez sélectionner une période, une classe et un fichier CSV');
+      toast.error('Veuillez sélectionner une période, une classe et un fichier CSV');
       return;
     }
 
@@ -72,7 +74,7 @@ EL00003,Anglais,Composition,9,2024-10-17,Excellent`;
       const parsedData = parseCSV(text);
 
       if (parsedData.length === 0) {
-        alert('Le fichier CSV est vide');
+        toast.info('Le fichier CSV est vide');
         setImporting(false);
         return;
       }

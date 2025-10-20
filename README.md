@@ -184,3 +184,82 @@ Ce projet est développé de manière modulaire. Chaque module doit être compl�
 ## 📄 Licence
 
 © 2024 Système de Gestion Scolaire. Tous droits réservés.
+
+## 🧩 Configuration et environnements
+
+- **Backend (`backend/core/settings.py`)**
+  - `DEBUG`: `True` en dev. Mettre à `False` en prod.
+  - `ALLOWED_HOSTS`: renseigner vos domaines en prod.
+  - `CORS_ALLOWED_ORIGINS`: inclure l’URL du frontend.
+  - `AUTH_USER_MODEL`: `users.User`.
+  - `REST_FRAMEWORK.DEFAULT_AUTHENTICATION_CLASSES`: `users.authentication.CustomJWTAuthentication`.
+  - `MEDIA_URL`/`MEDIA_ROOT`: fichiers uploadés.
+
+- **Frontend (`frontend/src/services/api.js`)**
+  - Base API: `http://localhost:8000/api`.
+  - Les tokens JWT sont stockés dans `localStorage` (`access_token`, `refresh_token`).
+
+Astuce (optionnel): externaliser les configs en variables d’environnement.
+- Frontend: définir `VITE_API_URL` et lire via `import.meta.env.VITE_API_URL`.
+- Backend: utiliser `python-decouple` (déjà dans `requirements.txt`) pour `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`.
+
+## 🧪 Données et migrations
+
+- Exécuter à chaque changement de modèles dans `backend/`:
+  - `python manage.py makemigrations`
+  - `python manage.py migrate`
+- Création d’un superutilisateur:
+  - `python manage.py createsuperuser`
+- Import d’élèves CSV/Excel via endpoints `eleves/import_csv/` et templates `template_csv`/`template_excel`.
+
+## 🔐 Multi-tenant et sécurité
+
+- `core.middleware.TenantMiddleware`: expose `request.ecole` et `X-Tenant-School`.
+- `core.middleware.TenantSecurityMiddleware`: bloque l’accès aux endpoints critiques sans école assignée (`403 NO_SCHOOL_ASSIGNED`).
+- `users.authentication.CustomJWTAuthentication`: charge `user.ecole` automatiquement.
+
+## 🧰 Commandes utiles
+
+- **Backend**
+  - Lancer le serveur: `python manage.py runserver`
+  - Créer migrations: `python manage.py makemigrations`
+  - Appliquer migrations: `python manage.py migrate`
+  - Créer superuser: `python manage.py createsuperuser`
+
+- **Frontend**
+  - Dev: `npm run dev`
+  - Lint: `npm run lint`
+  - Build: `npm run build`
+  - Preview: `npm run preview`
+
+## 🧯 Dépannage
+
+- **CORS**: vérifier `CORS_ALLOWED_ORIGINS` dans `settings.py` correspond à l’URL du frontend.
+- **401/expired token**: le refresh se fait via `/auth/token/refresh/`. En cas d’échec, l’appli redirige vers `/login`.
+- **403 NO_SCHOOL_ASSIGNED**: assigner l’utilisateur à une école dans l’admin ou via API.
+- **Pagination**: DRF est configuré avec `PAGE_SIZE=1000`. Les services front gèrent `results` si paginé.
+
+## 🧾 Fichiers d'environnement (.env)
+
+- **Backend**: copier `backend/.env.example` vers `backend/.env` et ajuster `SECRET_KEY`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`.
+- **Frontend**: copier `frontend/.env.example` vers `frontend/.env` et ajuster `VITE_API_URL`.
+- Après modification de `backend/requirements.txt`, réinstaller:
+  - `pip install -r backend/requirements.txt`
+
+## 📘 Documentation API (Swagger)
+
+- Lancer le backend (`python manage.py runserver`).
+- Accéder à l'UI Swagger: `http://localhost:8000/api/docs/`.
+- Schéma OpenAPI (JSON): `http://localhost:8000/api/schema/`.
+- Documentation Redoc: `http://localhost:8000/api/redoc/`.
+
+## 📚 Documentation complémentaire
+
+- `QUICKSTART.md` — Démarrage rapide
+- `DEMARRAGE_IMMEDIAT.md` — Lancer immédiatement le projet
+- `GUIDE_IMPLEMENTATION_MULTI_TENANT.md` — Implémentation multi-tenant
+- `GUIDE_TEST_MULTI_TENANT.md` — Tests multi-tenant
+- `CLOISONNEMENT_DONNEES_SAAS.md` — Cloisonnement des données
+- `RESUME_FINAL.md` — Résumé final
+- `PROJET_STATUS.md` — État d’avancement
+- `POPULATE_DB.md` — Aide au peuplement des données

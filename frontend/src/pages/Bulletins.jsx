@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   periodeService,
   moyenneService,
@@ -12,6 +13,7 @@ import html2pdf from 'html2pdf.js';
 
 const Bulletins = () => {
   const { isAdmin } = useAuth();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   
   // Données
@@ -194,14 +196,14 @@ const Bulletins = () => {
       
     } catch (error) {
       console.error('Erreur lors de la génération du PDF:', error);
-      alert('Erreur lors de la génération du PDF. Veuillez réessayer.');
+      toast.error('Erreur lors de la génération du PDF. Veuillez réessayer.');
     }
   };
 
   // Télécharger tous les bulletins de la classe en un seul PDF - VERSION OPTIMISÉE
   const handleDownloadAllBulletinsOptimized = async () => {
     if (!selectedClasse || !selectedPeriode) {
-      alert('Veuillez sélectionner une classe et une période');
+      toast.error('Veuillez sélectionner une classe et une période');
       return;
     }
 
@@ -217,7 +219,7 @@ const Bulletins = () => {
       const bulletinsData = response.bulletins || [];
       
       if (bulletinsData.length === 0) {
-        alert('Aucun bulletin disponible pour cette classe');
+        toast.info('Aucun bulletin disponible pour cette classe');
         setIsDownloading(false);
         setDownloadProgress(0);
         return;
@@ -300,21 +302,21 @@ const Bulletins = () => {
       setTimeout(() => {
         setIsDownloading(false);
         setDownloadProgress(0);
-        alert(`✓ ${bulletinsData.length} bulletin(s) téléchargé(s) avec succès !`);
+        toast.success(`✓ ${bulletinsData.length} bulletin(s) téléchargé(s) avec succès !`);
       }, 500);
       
     } catch (error) {
       console.error('Erreur:', error);
       setIsDownloading(false);
       setDownloadProgress(0);
-      alert('Erreur lors de la génération du PDF. Veuillez réessayer.');
+      toast.error('Erreur lors de la génération du PDF. Veuillez réessayer.');
     }
   };
 
   // Télécharger tous les bulletins de la classe en un seul PDF - VERSION STANDARD
   const handleDownloadAllBulletins = async () => {
     if (!selectedClasse || !selectedPeriode) {
-      alert('Veuillez sélectionner une classe et une période');
+      toast.error('Veuillez sélectionner une classe et une période');
       return;
     }
 
@@ -322,7 +324,7 @@ const Bulletins = () => {
     const elevesAvecNotes = elevesWithExaequo.filter(e => e.hasNotes);
     
     if (elevesAvecNotes.length === 0) {
-      alert('Aucun élève avec des notes dans cette classe');
+      toast.info('Aucun élève avec des notes dans cette classe');
       return;
     }
 
@@ -413,11 +415,11 @@ const Bulletins = () => {
       await html2pdf().set(options).from(element).save();
       
       console.log('✓ PDF généré avec succès !');
-      alert(`${bulletinsData.length} bulletin(s) téléchargé(s) avec succès !`);
+      toast.success(`${bulletinsData.length} bulletin(s) téléchargé(s) avec succès !`);
       
     } catch (error) {
       console.error('Erreur lors de la génération du PDF:', error);
-      alert('Erreur lors de la génération du PDF. Veuillez réessayer.');
+      toast.error('Erreur lors de la génération du PDF. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }

@@ -10,8 +10,10 @@ import {
   moyenneService
 } from '../services/api';
 import { ArrowLeft, Save, Plus, Trash2, Edit2, TrendingUp, Grid, List, Filter } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const EleveNotes = () => {
+  const toast = useToast();
   const { eleveId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -132,7 +134,7 @@ const EleveNotes = () => {
       await loadMoyennes();
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de l\'enregistrement');
+      toast.error("Erreur lors de l'enregistrement");
     }
   };
 
@@ -157,7 +159,7 @@ const EleveNotes = () => {
       await loadMoyennes();
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la suppression');
+      toast.error('Erreur lors de la suppression');
     }
   };
 

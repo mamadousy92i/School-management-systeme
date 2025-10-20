@@ -85,10 +85,8 @@ class AnneeScolaireViewSet(BaseEcoleViewSet):
         if annee:
             serializer = self.get_serializer(annee)
             return Response(serializer.data)
-        return Response(
-            {'error': 'Aucune année scolaire active'},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        # Aucun enregistrement actif: renvoyer 204 pour éviter une erreur Axios côté frontend
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ClasseViewSet(BaseEcoleViewSet):
@@ -229,6 +227,13 @@ class EleveViewSet(BaseEcoleViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # Cloisonnement: la classe doit appartenir à l'école de l'utilisateur
+        if not getattr(request.user, 'ecole', None) or getattr(classe, 'ecole', None) != request.user.ecole:
+            return Response(
+                {'error': 'Non autorisé: classe hors de votre école'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         imported = 0
         errors = []
         
@@ -287,6 +292,10 @@ class EleveViewSet(BaseEcoleViewSet):
             next_id = (last_eleve.id + 1) if last_eleve else 1
             matricule = f"EL{next_id:05d}"
         
+        # Cloisonnement: la classe doit appartenir à l'école de l'utilisateur
+        if not getattr(self.request.user, 'ecole', None) or getattr(classe, 'ecole', None) != self.request.user.ecole:
+            raise ValidationError('Non autorisé: classe hors de votre école')
+        
         eleve = Eleve.objects.create(
             matricule=matricule,
             nom=row.get('nom', '').upper(),
@@ -304,7 +313,8 @@ class EleveViewSet(BaseEcoleViewSet):
             tuteur=row.get('tuteur', ''),
             telephone_tuteur=row.get('telephone_tuteur', ''),
             classe=classe,
-            statut='actif'
+            statut='actif',
+            ecole=self.request.user.ecole
         )
         return eleve
     
@@ -523,11 +533,24 @@ class EleveViewSet(BaseEcoleViewSet):
         
         try:
             nouvelle_classe = Classe.objects.get(id=nouvelle_classe_id)
-            eleves = Eleve.objects.filter(id__in=eleves_ids)
+            # Cloisonnement: nouvelle classe doit appartenir à l'école de l'utilisateur
+            if not getattr(request.user, 'ecole', None) or getattr(nouvelle_classe, 'ecole', None) != request.user.ecole:
+                return Response(
+                    {'error': 'Non autorisé: classe hors de votre école'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            # Restreindre les élèves à l'école de l'utilisateur
+            eleves = Eleve.objects.filter(id__in=eleves_ids, ecole=request.user.ecole)
             
             # Mise à jour
             eleves_mis_a_jour = 0
             for eleve in eleves:
+                # Vérifier cohérence école de l'élève et de la nouvelle classe
+                if getattr(eleve, 'ecole', None) != request.user.ecole:
+                    return Response(
+                        {'error': f"Élève {eleve.id} hors de votre école"},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
                 eleve.classe = nouvelle_classe
                 eleve.statut = nouveau_statut
                 eleve.save()

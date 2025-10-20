@@ -3,9 +3,11 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { eleveService, classeService, periodeService, moyenneService } from '../services/api';
 import { CheckCircle, XCircle, Award, AlertCircle, Users, TrendingUp, TrendingDown, Zap, Filter, Search } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const PassageClasseAmeliore = () => {
   const { isAdmin } = useAuth();
+  const toast = useToast();
   const [classes, setClasses] = useState([]);
   const [selectedClasse, setSelectedClasse] = useState('');
   const [eleves, setEleves] = useState([]);
@@ -123,16 +125,16 @@ const PassageClasseAmeliore = () => {
       await new Promise(resolve => setTimeout(resolve, 300));
       await loadElevesWithMoyennes();
       
-      alert(`Statut changé en "${statut}" avec succès !`);
+      toast.success(`Statut changé en "${statut}" avec succès !`);
     } catch (error) {
       console.error('Erreur complète:', error);
-      alert('Erreur lors du changement de statut: ' + (error.response?.data?.error || error.message));
+      toast.error('Erreur lors du changement de statut: ' + (error.response?.data?.error || error.message));
     }
   };
 
   const handleAdmissionAutomatique = async () => {
     if (!moyenneMinimale || moyenneMinimale < 0 || moyenneMinimale > 10) {
-      alert('Veuillez entrer une moyenne valide entre 0 et 10');
+      toast.error('Veuillez entrer une moyenne valide entre 0 et 10');
       return;
     }
 
@@ -142,7 +144,7 @@ const PassageClasseAmeliore = () => {
     );
 
     if (elevesAAdmettre.length === 0) {
-      alert('Aucun élève ne correspond aux critères');
+      toast.info('Aucun élève ne correspond aux critères');
       return;
     }
 
@@ -157,12 +159,12 @@ const PassageClasseAmeliore = () => {
       for (const eleve of elevesAAdmettre) {
         await eleveService.proposerPassage(eleve.id, 'admis');
       }
-      alert(`${elevesAAdmettre.length} élève(s) marqué(s) comme admis !`);
+      toast.success(`${elevesAAdmettre.length} élève(s) marqué(s) comme admis !`);
       loadElevesWithMoyennes();
       setShowAdmissionModal(false);
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de l\'admission automatique');
+      toast.error('Erreur lors de l\'admission automatique');
       setLoading(false);
     }
   };

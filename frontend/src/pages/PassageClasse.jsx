@@ -3,8 +3,10 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { eleveService, classeService, periodeService } from '../services/api';
 import { CheckCircle, XCircle, Award, AlertCircle, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const PassageClasse = () => {
+  const toast = useToast();
   const { isAdmin } = useAuth();
   const [classes, setClasses] = useState([]);
   const [selectedClasse, setSelectedClasse] = useState('');
@@ -71,11 +73,11 @@ const PassageClasse = () => {
   const handleProposerPassage = async (eleveId, statut) => {
     try {
       await eleveService.proposerPassage(eleveId, statut);
-      alert(`Statut changé en "${statut}" avec succès !`);
+      toast.success(`Statut changé en "${statut}" avec succès !`);
       loadEleves(); // Recharger pour voir le changement
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors du changement de statut');
+      toast.error('Erreur lors du changement de statut');
     }
   };
 

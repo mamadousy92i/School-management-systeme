@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { classeService, anneeScolaireService } from '../services/api';
 import { Plus, Edit2, Trash2, Users, Search, X } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Classes = () => {
+  const toast = useToast();
   const [classes, setClasses] = useState([]);
   const [anneeScolaire, setAnneeScolaire] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ const Classes = () => {
       closeModal();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde de la classe');
+      toast.error('Erreur lors de la sauvegarde de la classe');
     }
   };
 
@@ -77,7 +79,7 @@ const Classes = () => {
         loadData();
       } catch (error) {
         console.error('Erreur lors de la suppression:', error);
-        alert('Erreur lors de la suppression de la classe');
+        toast.error('Erreur lors de la suppression de la classe');
       }
     }
   };

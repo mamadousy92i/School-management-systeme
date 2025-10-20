@@ -3,9 +3,11 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { eleveService, classeService } from '../services/api';
 import { Plus, Edit2, Trash2, Search, Upload, Download, X, User, Phone, Users, Eye, Calendar, MapPin, Mail, List, Grid } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Eleves = () => {
   const { isAdmin } = useAuth();
+  const toast = useToast();
   const [eleves, setEleves] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +65,7 @@ const Eleves = () => {
       setClasses(classesData.results || classesData);
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
-      alert('Erreur: ' + (error.response?.data?.error || error.message));
+      toast.error('Erreur: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
@@ -89,7 +91,7 @@ const Eleves = () => {
       closeModal();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde de l\'élève');
+      toast.error("Erreur lors de la sauvegarde de l'élève");
     }
   };
 
@@ -100,7 +102,7 @@ const Eleves = () => {
         loadData();
       } catch (error) {
         console.error('Erreur lors de la suppression:', error);
-        alert('Erreur lors de la suppression de l\'élève');
+        toast.error("Erreur lors de la suppression de l'élève");
       }
     }
   };
@@ -108,7 +110,7 @@ const Eleves = () => {
   const handleImport = async (e) => {
     e.preventDefault();
     if (!importFile || !importClasse) {
-      alert('Veuillez sélectionner un fichier et une classe');
+      toast.error('Veuillez sélectionner un fichier et une classe');
       return;
     }
 
@@ -118,7 +120,7 @@ const Eleves = () => {
 
     try {
       const result = await eleveService.importCSV(formData);
-      alert(`Import réussi: ${result.imported} élève(s) importé(s)`);
+      toast.success(`Import réussi: ${result.imported} élève(s) importé(s)`);
       if (result.errors.length > 0) {
         console.error('Erreurs d\'import:', result.errors);
       }
@@ -126,7 +128,7 @@ const Eleves = () => {
       closeImportModal();
     } catch (error) {
       console.error('Erreur lors de l\'import:', error);
-      alert('Erreur lors de l\'import du fichier');
+      toast.error("Erreur lors de l'import du fichier");
     }
   };
 
@@ -146,7 +148,7 @@ const Eleves = () => {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Erreur lors du téléchargement du template:', error);
-      alert('Erreur lors du téléchargement du template');
+      toast.error('Erreur lors du téléchargement du template');
     }
   };
 

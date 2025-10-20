@@ -2,17 +2,21 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { professeurService, userService } from '../services/api';
+import { professeurService, userService, authService } from '../services/api';
+import { useToast } from '../context/ToastContext';
 import { User, Mail, Phone, MapPin, Calendar, BookOpen, Users, Award, Building2, Briefcase, ExternalLink, ClipboardList, FileText } from 'lucide-react';
 
 export default function Parametres() {
   const { user } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [profil, setProfil] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profil');
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
+  const [pwd, setPwd] = useState({ new_password: '', confirm_password: '' });
+  const [pwdLoading, setPwdLoading] = useState(false);
 
   useEffect(() => {
     fetchProfilComplet();
@@ -32,6 +36,7 @@ export default function Parametres() {
       });
     } catch (error) {
       console.error('Erreur lors du chargement du profil:', error);
+      toast.error('Erreur lors du chargement du profil');
     } finally {
       setLoading(false);
     }
@@ -51,10 +56,38 @@ export default function Parametres() {
       await userService.update(user.id, formData);
       await fetchProfilComplet();
       setEditing(false);
-      alert('Profil mis à jour avec succès');
+      toast.success('Profil mis à jour avec succès');
     } catch (error) {
       console.error('Erreur lors de la mise à jour:', error);
-      alert('Erreur lors de la mise à jour du profil');
+      toast.error('Erreur lors de la mise à jour du profil');
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!pwd.old_password) {
+      toast.error("Veuillez saisir l'ancien mot de passe");
+      return;
+    }
+    if (!pwd.new_password || pwd.new_password.length < 8) {
+      toast.error('Le nouveau mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+    if (pwd.new_password !== pwd.confirm_password) {
+      toast.error('Les mots de passe ne correspondent pas');
+      return;
+    }
+    try {
+      setPwdLoading(true);
+      await authService.changePassword({ old_password: pwd.old_password, new_password: pwd.new_password });
+      setPwd({ old_password: '', new_password: '', confirm_password: '' });
+      toast.success('Mot de passe mis à jour');
+    } catch (err) {
+      console.error('Erreur mot de passe:', err);
+      const msg = err?.response?.data?.detail ?? 'Erreur lors de la mise à jour du mot de passe';
+      toast.error(msg);
+    } finally {
+      setPwdLoading(false);
     }
   };
 
@@ -486,6 +519,48 @@ export default function Parametres() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Sécurité - Changer le mot de passe */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Sécurité • Changer le mot de passe</h2>
+          <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-md">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ancien mot de passe</label>
+              <input
+                type="password"
+                value={pwd.old_password || ''}
+                onChange={(e) => setPwd(p => ({ ...p, old_password: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
+              <input
+                type="password"
+                value={pwd.new_password}
+                onChange={(e) => setPwd(p => ({ ...p, new_password: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Au moins 8 caractères"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
+              <input
+                type="password"
+                value={pwd.confirm_password}
+                onChange={(e) => setPwd(p => ({ ...p, confirm_password: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={pwdLoading}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {pwdLoading ? 'Enregistrement…' : 'Mettre à jour le mot de passe'}
+            </button>
+          </form>
         </div>
       </div>
     </Layout>

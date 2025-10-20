@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
+import Toaster from './components/Toaster';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -11,6 +13,7 @@ import Notes from './pages/Notes';
 import EleveNotes from './pages/EleveNotes';
 import Bulletins from './pages/Bulletins';
 import Parametres from './pages/Parametres';
+import AdminProfil from './pages/AdminProfil';
 import Professeurs from './pages/Professeurs';
 import ConsultationNotes from './pages/ConsultationNotes';
 import PassageClasseAmeliore from './pages/PassageClasseAmeliore';
@@ -21,7 +24,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
+        <ToastProvider>
+          <Toaster />
+          <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -118,6 +123,15 @@ function App() {
           />
           
           <Route
+            path="/profil-admin"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <AdminProfil />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
             path="/consultation-notes"
             element={
               <ProtectedRoute adminOnly={true}>
@@ -149,7 +163,8 @@ function App() {
           
           {/* 404 */}
           <Route path="*" element={<Navigate to="/accueil" replace />} />
-        </Routes>
+          </Routes>
+        </ToastProvider>
       </AuthProvider>
     </Router>
   );

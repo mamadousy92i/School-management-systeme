@@ -23,6 +23,10 @@ class PeriodeViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Periode.objects.all()
+        # Filtrer par école de l'utilisateur
+        user = getattr(self.request, 'user', None)
+        if getattr(user, 'is_authenticated', False) and getattr(user, 'ecole', None):
+            queryset = queryset.filter(annee_scolaire__ecole=user.ecole)
         
         # Filtrer par année scolaire si spécifié
         annee_id = self.request.query_params.get('annee_scolaire')
@@ -78,6 +82,16 @@ class NoteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = Note.objects.all()
+        
+        # Cloisonnement par école
+        if getattr(user, 'is_authenticated', False) and getattr(user, 'ecole', None):
+            queryset = queryset.filter(
+                eleve__ecole=user.ecole,
+                matiere__ecole=user.ecole,
+                periode__annee_scolaire__ecole=user.ecole,
+            )
+        else:
+            return Note.objects.none()
         
         # Filtres communs
         eleve_id = self.request.query_params.get('eleve')
@@ -270,6 +284,13 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # Vérifier cloisonnement par école
+        if not getattr(request.user, 'ecole', None) or (
+            getattr(eleve, 'ecole', None) != request.user.ecole or
+            getattr(periode.annee_scolaire, 'ecole', None) != request.user.ecole
+        ):
+            return Response({'error': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
+        
         # Vérifier les permissions
         user = request.user
         if user.is_professeur() and not user.is_admin():
@@ -400,6 +421,13 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # Vérifier cloisonnement par école
+        if not getattr(request.user, 'ecole', None) or (
+            getattr(classe, 'ecole', None) != request.user.ecole or
+            getattr(periode.annee_scolaire, 'ecole', None) != request.user.ecole
+        ):
+            return Response({'error': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
+        
         # Vérifier les permissions (prof titulaire OU prof qui enseigne dans la classe)
         user = request.user
         if user.is_professeur() and not user.is_admin():
@@ -501,6 +529,13 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'Classe ou période introuvable'},
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+        # Vérifier cloisonnement par école
+        if not getattr(request.user, 'ecole', None) or (
+            getattr(classe, 'ecole', None) != request.user.ecole or
+            getattr(periode.annee_scolaire, 'ecole', None) != request.user.ecole
+        ):
+            return Response({'error': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
         
         # Vérifier les permissions
         user = request.user
@@ -622,6 +657,10 @@ class MoyenneViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'Période introuvable'},
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+        # Vérifier cloisonnement par école
+        if not getattr(request.user, 'ecole', None) or getattr(periode.annee_scolaire, 'ecole', None) != request.user.ecole:
+            return Response({'error': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
         
         # Recalculer toutes les moyennes pour cette période
         notes = Note.objects.filter(periode=periode).values('eleve', 'matiere').distinct()

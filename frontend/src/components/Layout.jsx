@@ -126,10 +126,13 @@ const Layout = ({ children }) => {
           </div>
           <button
             onClick={handleLogout}
-            className="flex justify-center items-center space-x-2 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg w-full text-red-600 transition"
+            className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-red-50 text-red-600 transition"
           >
-            <LogOut className="w-4 h-4" />
-            <span className="font-medium text-sm">Déconnexion</span>
+            <div className="flex items-center space-x-2">
+              <LogOut className="w-4 h-4" />
+              <span className="font-medium text-sm">Déconnexion</span>
+            </div>
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </aside>
@@ -144,6 +147,15 @@ const Layout = ({ children }) => {
           >
             <Menu className="w-6 h-6" />
           </button>
+          {isAdmin() && (
+            <button
+              onClick={() => navigate('/profil-admin')}
+              className="ml-auto flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-50 text-gray-700"
+            >
+              <Settings className="w-4 h-4" />
+              <span className="text-sm font-medium">Profil admin</span>
+            </button>
+          )}
         </header>
 
         {/* Content */}

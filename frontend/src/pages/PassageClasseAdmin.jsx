@@ -3,9 +3,11 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { eleveService, classeService } from '../services/api';
 import { ArrowRight, CheckSquare, Square, Users, AlertTriangle, Search } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const PassageClasseAdmin = () => {
   const { isAdmin } = useAuth();
+  const toast = useToast();
   
   // Vérification admin dès le début
   if (!isAdmin()) {
@@ -120,12 +122,12 @@ const PassageClasseAdmin = () => {
 
   const handlePassageClasse = async () => {
     if (!selectedClasseDestination) {
-      alert('Veuillez sélectionner une classe de destination');
+      toast.error('Veuillez sélectionner une classe de destination');
       return;
     }
 
     if (selectedEleves.length === 0) {
-      alert('Veuillez sélectionner au moins un élève');
+      toast.error('Veuillez sélectionner au moins un élève');
       return;
     }
 
@@ -142,13 +144,7 @@ const PassageClasseAdmin = () => {
     };
 
     if (niveauDestination <= niveauOrigine) {
-      alert(
-        `⚠️ Attention !\n\nVous ne pouvez pas faire un passage vers une classe de niveau égal ou inférieur.\n\n` +
-        `Classe d'origine : ${classeOrigine?.nom} (${getNomNiveau(niveauOrigine)})\n` +
-        `Classe de destination : ${classeDestination?.nom} (${getNomNiveau(niveauDestination)})\n\n` +
-        `Le passage doit se faire vers une classe supérieure uniquement.\n` +
-        `Ordre des niveaux : CI → CP → CE1 → CE2 → CM1 → CM2`
-      );
+      toast.error('Passage invalide: la classe de destination doit être de niveau supérieur.');
       return;
     }
 
@@ -166,14 +162,14 @@ const PassageClasseAdmin = () => {
         'actif'
       );
       
-      alert(result.message || 'Passage effectué avec succès !');
+      toast.success(result.message || 'Passage effectué avec succès !');
       
       // Recharger les données
       loadEleves();
       setSelectedClasseDestination('');
     } catch (error) {
       console.error('Erreur lors du passage:', error);
-      alert('Erreur lors du passage de classe');
+      toast.error('Erreur lors du passage de classe');
       setLoading(false);
     }
   };

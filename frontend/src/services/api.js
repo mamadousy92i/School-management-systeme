@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -90,6 +90,11 @@ export const authService = {
     const response = await api.get('/auth/profile/');
     return response.data;
   },
+
+  changePassword: async ({ old_password, new_password }) => {
+    const response = await api.post('/auth/change_password/', { old_password, new_password });
+    return response.data;
+  },
 };
 
 // Services utilisateurs
@@ -106,6 +111,11 @@ export const userService = {
 
   update: async (id, userData) => {
     const response = await api.put(`/users/${id}/`, userData);
+    return response.data;
+  },
+
+  patch: async (id, userData) => {
+    const response = await api.patch(`/users/${id}/`, userData);
     return response.data;
   },
 

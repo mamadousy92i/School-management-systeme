@@ -14,8 +14,10 @@ import {
   Calendar,
   Award
 } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 export default function Professeurs() {
+  const toast = useToast();
   const [professeurs, setProfesseurs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,7 +51,7 @@ export default function Professeurs() {
       setProfesseurs(data.results || data || []);
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors du chargement des enseignants');
+      toast.error('Erreur lors du chargement des enseignants');
     } finally {
       setLoading(false);
     }
@@ -88,10 +90,10 @@ export default function Professeurs() {
     try {
       if (editingProf) {
         await professeurService.update(editingProf.id, formData);
-        alert('Enseignant modifié avec succès');
+        toast.success('Enseignant modifié avec succès');
       } else {
         await professeurService.create(formData);
-        alert('Enseignant créé avec succès');
+        toast.success('Enseignant créé avec succès');
       }
       
       setShowModal(false);
@@ -99,7 +101,7 @@ export default function Professeurs() {
       loadProfesseurs();
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur: ' + (error.response?.data?.message || error.message));
+      toast.error('Erreur: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -127,11 +129,11 @@ export default function Professeurs() {
 
     try {
       await professeurService.delete(id);
-      alert('Enseignant supprimé avec succès');
+      toast.success('Enseignant supprimé avec succès');
       loadProfesseurs();
     } catch (error) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la suppression');
+      toast.error('Erreur lors de la suppression');
     }
   };
 

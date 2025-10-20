@@ -84,20 +84,20 @@ const EcoleAccueil = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-700"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
-      <nav className="bg-white shadow-md sticky top-0 z-50">
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg">
+              <div className="flex items-center justify-center w-10 h-10 bg-gray-900 rounded-md">
                 <School className="h-6 w-6 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900">{ecoleInfo.nom}</span>
@@ -107,14 +107,14 @@ const EcoleAccueil = () => {
               <span className="text-sm text-gray-600">Bonjour, {user?.first_name || user?.username}</span>
               <button
                 onClick={() => navigate('/dashboard')}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-black transition"
               >
                 <LayoutDashboard className="h-4 w-4" />
                 <span>Dashboard</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="flex items-center space-x-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                className="flex items-center space-x-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition"
               >
                 <LogOut className="h-4 w-4" />
                 <span>Déconnexion</span>
@@ -128,21 +128,20 @@ const EcoleAccueil = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="space-y-8">
         {/* Hero Section */}
-        <div className="relative bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-2xl overflow-hidden">
-          <div className="absolute inset-0 bg-black opacity-10"></div>
-          <div className="relative px-8 py-12 md:py-16">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="px-8 py-12 md:py-14">
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full mb-6">
-                <School className="h-12 w-12 text-blue-600" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-900 rounded-md mb-5">
+                <School className="h-9 w-9 text-white" />
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 mb-3">
                 {ecoleInfo.nom}
               </h1>
-              <p className="text-xl text-blue-100 mb-2">
+              <p className="text-base text-gray-600 mb-1">
                 {ecoleInfo.devise}
               </p>
-              <p className="text-lg text-blue-200">
-                Année Scolaire: {stats.anneeScolaire?.nom || '2024-2025'}
+              <p className="text-sm text-gray-500">
+                Année scolaire: {stats.anneeScolaire?.nom || '2024-2025'}
               </p>
             </div>
           </div>
@@ -150,33 +149,33 @@ const EcoleAccueil = () => {
 
         {/* Statistiques Principales */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium mb-1">Total Élèves</p>
-                <p className="text-4xl font-bold">{stats.totalEleves}</p>
+                <p className="text-gray-500 text-sm mb-1">Total élèves</p>
+                <p className="text-4xl font-semibold text-gray-900">{stats.totalEleves}</p>
               </div>
-              <Users className="h-16 w-16 text-blue-200 opacity-80" />
+              <Users className="h-10 w-10 text-gray-400" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium mb-1">Classes</p>
-                <p className="text-4xl font-bold">{stats.totalClasses}</p>
+                <p className="text-gray-500 text-sm mb-1">Classes</p>
+                <p className="text-4xl font-semibold text-gray-900">{stats.totalClasses}</p>
               </div>
-              <BookOpen className="h-16 w-16 text-green-200 opacity-80" />
+              <BookOpen className="h-10 w-10 text-gray-400" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium mb-1">Enseignants</p>
-                <p className="text-4xl font-bold">{stats.totalProfesseurs}</p>
+                <p className="text-gray-500 text-sm mb-1">Enseignants</p>
+                <p className="text-4xl font-semibold text-gray-900">{stats.totalProfesseurs}</p>
               </div>
-              <GraduationCap className="h-16 w-16 text-purple-200 opacity-80" />
+              <GraduationCap className="h-10 w-10 text-gray-400" />
             </div>
           </div>
         </div>
@@ -184,9 +183,9 @@ const EcoleAccueil = () => {
         {/* Informations de l'École */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Administration */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-              <Award className="h-6 w-6 mr-2 text-yellow-500" />
+              <Award className="h-6 w-6 mr-2 text-gray-400" />
               Administration
             </h2>
             <div className="space-y-3">
@@ -210,9 +209,9 @@ const EcoleAccueil = () => {
           </div>
 
           {/* Contact */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-              <Phone className="h-6 w-6 mr-2 text-blue-500" />
+              <Phone className="h-6 w-6 mr-2 text-gray-400" />
               Contact
             </h2>
             <div className="space-y-3">
@@ -242,16 +241,16 @@ const EcoleAccueil = () => {
         </div>
 
         {/* Niveaux Disponibles */}
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
           <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-            <BookOpen className="h-6 w-6 mr-2 text-green-500" />
+            <BookOpen className="h-6 w-6 mr-2 text-gray-400" />
             Niveaux Disponibles
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             {['CI', 'CP', 'CE1', 'CE2', 'CM1', 'CM2'].map((niveau) => (
               <div 
                 key={niveau}
-                className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 text-center border-2 border-gray-200 hover:border-blue-500 hover:shadow-md transition"
+                className="bg-white rounded-lg p-4 text-center border border-gray-200 hover:border-gray-400 transition"
               >
                 <p className="text-2xl font-bold text-gray-900">{niveau}</p>
               </div>
@@ -260,7 +259,7 @@ const EcoleAccueil = () => {
         </div>
 
         {/* Bouton d'Action */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-8 border border-blue-200 text-center">
+        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-200 text-center">
           <h3 className="text-2xl font-bold text-gray-900 mb-3">
             Prêt à Commencer ?
           </h3>
@@ -269,7 +268,7 @@ const EcoleAccueil = () => {
           </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg hover:shadow-xl font-semibold text-lg"
+            className="inline-flex items-center px-8 py-3 bg-gray-900 text-white rounded-md hover:bg-black transition font-semibold text-lg"
           >
             Accéder au Dashboard
             <ChevronRight className="ml-2 h-5 w-5" />
