@@ -23,25 +23,30 @@ Le projet est divisé en 4 modules indépendants :
 - Permissions basées sur les rôles
 
 **Frontend** :
-- Pages Login et Register avec UI moderne
+- Page Login avec UI moderne
 - Context d'authentification React
 - Routes protégées
 - Dashboard avec sidebar responsive
 
-### 🔄 Module 2 : Gestion des Classes, Matières et Élèves (En cours)
+### ✅ Module 2 : Gestion des Classes, Matières et Élèves (Complété)
 - CRUD complet pour Classes, Matières, Élèves
-- Import de données via CSV/Excel
-- Interfaces d'administration
+- Import des élèves via CSV et génération de template Excel/CSV (`/api/academic/eleves/import_csv/`, `/api/academic/eleves/template_excel/`, `/api/academic/eleves/template_csv/`)
+- Ajout de matières à une classe (`/api/academic/classes/{id}/add_matiere/`)
+- Filtrage, recherche et pagination
+- Sécurité multi-tenant appliquée sur toutes les requêtes
 
-### ⏳ Module 3 : Saisie et Calcul des Notes (À venir)
-- Interface de saisie de notes par classe/matière
-- Calcul automatique des moyennes
-- Visualisation des performances
+### ✅ Module 3 : Saisie et Calcul des Notes (Complété)
+- Saisie de notes (CRUD) par les enseignants de leur classe
+- Saisie rapide en masse (`/api/grades/notes/saisie_rapide/`)
+- Calcul automatique des moyennes par matière et moyenne générale
+- Recalcul global des moyennes (`/api/grades/moyennes/recalculer/`)
+- Périodes scolaires (création, liste, clôture, filtre non clôturées)
 
-### ⏳ Module 4 : Bulletins et Cycle Scolaire (À venir)
-- Génération de bulletins PDF
-- Gestion de fin d'année scolaire
-- Passage automatique en classe supérieure
+### ✅ Module 4 : Bulletins et Cycle Scolaire (Implémenté)
+- Données complètes de bulletins par classe et période (`/api/grades/moyennes/bulletins_classe/`)
+- Classement/rangs avec détection des ex-aequo et effectifs
+- Génération des bulletins PDF côté frontend (via `html2pdf.js`)
+- Passage de classe officiel en masse (`/api/academic/eleves/passage_classe/`), proposition de statut (`/api/academic/eleves/{id}/proposer_passage/`)
 
 ## 🚀 Installation
 
@@ -93,9 +98,10 @@ Le frontend sera accessible sur `http://localhost:5173`
 ## 📡 API Endpoints
 
 ### Authentification
-- `POST /api/auth/register/` - Inscription
+- Pas d'auto-inscription: les comptes sont créés par un administrateur.
 - `POST /api/auth/login/` - Connexion
 - `POST /api/auth/logout/` - Déconnexion
+- `POST /api/auth/token/refresh/` - Rafraîchir le token
 - `GET /api/auth/profile/` - Profil utilisateur
 
 ### Utilisateurs

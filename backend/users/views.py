@@ -8,15 +8,8 @@ from .models import User, Admin, Professeur
 from django.contrib.auth.password_validation import validate_password
 from .serializers import (
     UserSerializer, AdminSerializer, ProfesseurSerializer,
-    RegisterSerializer, LoginSerializer
+    LoginSerializer
 )
-
-
-class RegisterView(generics.CreateAPIView):
-    """Vue pour l'inscription d'un nouvel utilisateur"""
-    queryset = User.objects.all()
-    permission_classes = [AllowAny]
-    serializer_class = RegisterSerializer
 
 
 @api_view(['POST'])

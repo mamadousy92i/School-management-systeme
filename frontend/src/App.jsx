@@ -4,7 +4,6 @@ import { ToastProvider } from './context/ToastContext';
 import Toaster from './components/Toaster';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
-import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Classes from './pages/Classes';
 import Matieres from './pages/Matieres';
@@ -29,7 +28,6 @@ function App() {
           <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
           
           {/* Protected Routes */}
           <Route

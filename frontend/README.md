@@ -44,14 +44,29 @@ frontend/
 └── vite.config.js
 ```
 
-## Fonctionnalités actuelles
+## Fonctionnalités
 
 ### Module 1 : Authentification ✅
 - **Page de connexion** avec formulaire sécurisé
-- **Page d'inscription** pour Admin et Professeur
 - **Gestion des tokens JWT** avec refresh automatique
 - **Routes protégées** selon le rôle
 - **Dashboard** avec sidebar et statistiques
+
+### Module 2 : Gestion des données ✅
+- Pages Classes, Matières, Élèves (liste, détails, filtres, recherche)
+- CRUD pour Classes, Matières, Élèves (selon rôle)
+- Import d'élèves via CSV/Excel + téléchargement de templates
+- Ajout de matières à une classe
+
+### Module 3 : Notes ✅
+- Saisie des notes par les enseignants pour leur classe
+- Saisie rapide en masse
+- Calcul et visualisation des moyennes
+
+### Module 4 : Bulletins et Passage ✅
+- Données de bulletins par classe/période avec rangs et ex-aequo
+- Génération PDF des bulletins (html2pdf.js)
+- Passage de classe en masse et proposition de statut
 
 ## Technologies
 
@@ -62,19 +77,6 @@ frontend/
 - **Lucide React** - Icônes modernes
 - **Vite** - Build tool
 
-## Modules à venir
+## Configuration
 
-### Module 2 : Gestion des données
-- Pages Classes, Matières, Élèves
-- Formulaires CRUD
-- Import de fichiers CSV/Excel
-
-### Module 3 : Notes
-- Interface de saisie de notes
-- Calcul automatique des moyennes
-- Visualisation des performances
-
-### Module 4 : Bulletins
-- Génération de bulletins PDF
-- Gestion du cycle scolaire
-- Passage en classe supérieure
+- Base API configurable via `.env` Vite: définir `VITE_API_URL` (par défaut `http://localhost:8000/api`).
